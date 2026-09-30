@@ -359,6 +359,7 @@ body[data-home="radiance"] #stats{padding:.75rem 2rem;border:1px solid rgba(var(
   body[data-home="radiance"] .rg-row label{flex-direction:column;align-items:stretch}
 }
 
+
 /* clearer settings labels, roomier book layout and keyboard navigation */
 .set label:hover{color:var(--sub)}
 .set .opt{display:inline-block;color:var(--text);transition:color .16s ease,text-decoration-color .16s ease}

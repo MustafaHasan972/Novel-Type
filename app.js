@@ -403,6 +403,32 @@ function browse(dir) {
   placeCaret();
 }
 
+function browsePage(dir) {
+  const visible = Math.max(1, Math.floor(el.viewport.clientHeight / S.lineH));
+  for (let i = 0; i < visible; i++) browse(dir);
+}
+
+function browseToEnd(end) {
+  if (!S.chars.length) return;
+  const visible = Math.max(1, Math.floor(el.viewport.clientHeight / S.lineH));
+  if (end) {
+    if (S.we < S.target.length) renderWindow(snapStart(S.target.length - 1), 0);
+    const last = S.chars[S.chars.length - 1];
+    setView(Math.max(0, Math.floor(last.offsetTop / S.lineH) - visible + 1));
+  } else {
+    if (S.ws > 0) renderWindow(0, 0);
+    setView(0);
+  }
+  if (S.set.view === 'read') {
+    const p = S.ws + lineStart(S.vl);
+    S.doc.pos = p;
+    S.doc.progress = p >= S.from && p < S.to ? { from: S.from, to: S.to, pos: p } : null;
+    clearTimeout(S.rt);
+    S.rt = setTimeout(saveBook, 800);
+  }
+  placeCaret();
+}
+
 function moveCaret() {
   const n = S.target.length;
   if (!n) return;
@@ -615,7 +641,6 @@ function finish() {
 
 // Leaving mid-test: show the stats so far and remember the place in this PDF.
 function leave() {
-  if (S.attempts === 0) { newPdf(); return; }
   clearInterval(S.timer);
   if (S.start) { S.spent += performance.now() - S.start; S.start = 0; }
   saveProgress();
@@ -625,6 +650,7 @@ function leave() {
 }
 
 function exitTest() {
+  if (S.set.view === 'read') { newPdf(); return; }
   if (S.state === 'typing' || S.state === 'paused') leave();
   else if (S.state !== 'upload' && S.state !== 'loading') newPdf();
 }
@@ -835,7 +861,7 @@ function toggleView() {
   syncSettingsUI();
   setState(S.state);
   if (!S.doc) return;
-  if (S.set.view === 'type') { jumpTo(S.doc.pos || S.from); return; }
+  if (S.set.view === 'type') { jumpTo(S.doc.pos ?? S.from, false); return; }
   if (S.state === 'typing') pause();
   S.doc.pos = S.idx;
   renderWindow(snapStart(S.idx));
@@ -947,10 +973,10 @@ async function openBook(id) {
 
 /* ================= Navigation: contents, search, jumping ================= */
 // Where the reader is: the cursor while typing, the top of the page while reading.
-function curPos() { return S.set.view === 'read' ? (S.doc.pos || S.idx) : S.idx; }
+function curPos() { return S.set.view === 'read' ? (S.doc.pos ?? S.idx) : S.idx; }
 
-function jumpTo(pos) {
-  if (S.attempts > 0) {
+function jumpTo(pos, commit = true) {
+  if (commit && S.attempts > 0 && S.set.view !== 'read') {
     if (S.state === 'typing') pause();
     commitSession(sessionResult());
   }
@@ -1067,8 +1093,13 @@ function onKeydown(e) {
   }
   if (st !== 'ready' && st !== 'typing' && st !== 'paused') return;
   if (S.set.view === 'read') { // reading mode: keys scroll, nothing is typed
-    const k = { ArrowDown: 1, ArrowUp: -1, PageDown: 6, PageUp: -6, ' ': 6 }[e.key];
-    if (k && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); for (let i = 0; i < Math.abs(k); i++) browse(Math.sign(k)); }
+    if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (e.key === 'Home') { e.preventDefault(); browseToEnd(false); }
+      else if (e.key === 'End') { e.preventDefault(); browseToEnd(true); }
+      else if (e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); browsePage(1); }
+      else if (e.key === 'PageUp') { e.preventDefault(); browsePage(-1); }
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); browse(e.key === 'ArrowDown' ? 1 : -1); }
+    }
     return;
   }
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); if (st === 'typing') pause(); else if (st === 'paused') resume(); return; }
@@ -1201,17 +1232,18 @@ function init() {
     tip.classList.add('show');
   };
   const tipHide = () => { tipEl = null; tip.classList.remove('show'); };
-  el.settings.addEventListener('mouseover', (e) => { const t = e.target.closest('[data-tip]'); if (t && t !== tipEl) tipShow(t, e); });
-  el.settings.addEventListener('mousemove', (e) => { if (tipEl) { tx = e.clientX; ty = e.clientY; if (!raf) raf = requestAnimationFrame(tipPlace); } });
-  el.settings.addEventListener('mouseout', (e) => { const t = e.target.closest('[data-tip]'); if (t && !t.contains(e.relatedTarget)) tipHide(); });
-  let byMouse = false; // keyboard focus shows the hint too; mouse clicks on the controls do not
-  el.settings.addEventListener('pointerdown', () => { byMouse = true; }, true);
-  el.settings.addEventListener('keydown', () => { byMouse = false; }, true);
-  el.settings.addEventListener('focusin', (e) => {
-    const l = e.target.closest('label'), t = l && l.querySelector('[data-tip]');
-    if (t && !byMouse) tipShow(t);
+  el.settings.addEventListener('pointerover', (e) => {
+    const t = e.target.closest('.opt[data-tip]');
+    if (t && t !== tipEl) tipShow(t, e);
   });
-  el.settings.addEventListener('focusout', tipHide);
+  el.settings.addEventListener('pointermove', (e) => {
+    if (!e.target.closest('.opt[data-tip]')) { tipHide(); return; }
+    if (tipEl) { tx = e.clientX; ty = e.clientY; if (!raf) raf = requestAnimationFrame(tipPlace); }
+  });
+  el.settings.addEventListener('pointerout', (e) => {
+    const t = e.target.closest('.opt[data-tip]');
+    if (t && !t.contains(e.relatedTarget)) tipHide();
+  });
   el.settings.addEventListener('close', tipHide);
 
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (S.set.theme === 'system') applySettings(); });

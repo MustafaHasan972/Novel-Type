@@ -112,9 +112,9 @@
 
 <button id="btn-focus" class="orb" type="button" aria-label="Focus mode" aria-pressed="false">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
-    <path d="M12 4.2a7.8 7.8 0 0 1 6.4 3.4"/><path d="M19.8 12a7.8 7.8 0 0 1-3.4 6.4"/>
-    <path d="M12 19.8a7.8 7.8 0 0 1-6.4-3.4"/><path d="M4.2 12a7.8 7.8 0 0 1 3.4-6.4"/>
-    <circle cx="12" cy="12" r="1.9" fill="currentColor" stroke="none"/>
+    <path d="m12 3.5 7.7 4.3v8.4L12 20.5l-7.7-4.3V7.8L12 3.5Z"/>
+    <path d="M12 7v10M7.8 8.4l2.8 1.7v4.1l-2.8-1.7V8.4Zm8.4 0-2.8 1.7v4.1l2.8-1.7V8.4Z"/>
+    <path d="m12 10.1.7 1.4 1.5.2-1.1 1.1.3 1.5-1.4-.7-1.4.7.3-1.5-1.1-1.1 1.5-.2.7-1.4Z" fill="currentColor" stroke="none"/>
   </svg>
 </button>
 
@@ -152,13 +152,13 @@
 <dialog id="settings" aria-labelledby="set-title">
   <div class="h-head"><h2 id="set-title">Settings</h2><button class="ghost" data-close type="button">Close</button></div>
   <div class="set">
-    <label><span class="opt" data-tip="Dark, light, Vintage book (parchment and old print), or follow your device.">Theme</span> <select id="set-theme"><option value="dark">Dark</option><option value="light">Light</option><option value="vintage">Vintage book</option><option value="system">System</option></select></label>
+    <label><span class="opt" data-tip="Dark, light, or Vintage book. Vintage uses warm parchment colors and old-style book lettering. System follows your device.">Theme</span> <select id="set-theme"><option value="dark">Dark</option><option value="light">Light</option><option value="vintage">Vintage book</option><option value="system">System</option></select></label>
     <label><span class="opt" data-tip="The typeface used for your book.">Font</span> <select id="set-font"><option value="serif">Source Serif</option><option value="merri">Merriweather</option><option value="atk">Atkinson Hyperlegible</option><option value="sans">Inter</option><option value="mono">JetBrains Mono</option></select></label>
     <label><span class="opt" data-tip="How large the book text is.">Font size</span> <input id="set-size" type="range" min="1.1" max="2.6" step="0.05"></label>
     <label><span class="opt" data-tip="Space between lines. Higher feels airier.">Line height</span> <input id="set-lh" type="range" min="1.3" max="2.4" step="0.05"></label>
     <label><span class="opt" data-tip="Extra space between letters.">Letter spacing</span> <input id="set-ls" type="range" min="-0.02" max="0.12" step="0.01"></label>
     <label><span class="opt" data-tip="How wide the reading column is.">Text width</span> <input id="set-w" type="range" min="50" max="100" step="5"></label>
-    <label><span class="opt" data-tip="Two designs for the home page and the typing page. Classic is calm and centred. Radiance adds a soft light from the centre and a lighter, more open layout.">Layout</span> <select id="set-home"><option value="classic">Classic</option><option value="radiance">Radiance</option></select></label>
+    <label><span class="opt" data-tip="Choose one of two matching home and typing layouts. Classic is centred and quiet. Radiance adds a very soft white centre glow and gives the typing page a more open arrangement.">Layout</span> <select id="set-home"><option value="classic">Classic</option><option value="radiance">Radiance</option></select></label>
     <label><span class="opt" data-tip="Type: practise while you read. Read: just read, with no typing at all.">Mode</span> <select id="set-view"><option value="type">Type</option><option value="read">Read only</option></select></label>
     <label><span class="opt" data-tip="Normal keeps mistakes marked while you continue. Strict makes you fix a mistake before moving on. Zen counts mistakes but does not show them.">Mistakes</span> <select id="set-mode"><option value="normal">Normal</option><option value="strict">Strict</option><option value="zen">Zen</option></select></label>
     <label><span class="opt" data-tip="Shows each new line for a few seconds, then hides the upcoming text so you type from memory.">Blind typing</span> <select id="set-blind"><option value="0">Off</option><option value="3">Hide after 3s</option><option value="6">Hide after 6s</option><option value="10">Hide after 10s</option></select></label>

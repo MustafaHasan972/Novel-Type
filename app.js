@@ -14,7 +14,8 @@ const S = {
   chars: [],         // one span per code point
   marks: null,       // 0 untyped, 1 correct, 2 incorrect
   idx: 0, attempts: 0, errors: 0, correctNow: 0,
-  start: 0, timer: 0, lineH: 0, ws: 0, we: 0, vl: 0, snap: false, follow: false, partial: false, from: 0, to: 0, pos0: 0, spent: 0, keyStat: {}, sig: -1, goalHit: false, goalCh: -1, clearArmed: 0
+  start: 0, timer: 0, lineH: 0, ws: 0, we: 0, vl: 0, snap: false, follow: false, partial: false, from: 0, to: 0, pos0: 0, spent: 0, keyStat: {}, sig: -1, goalHit: false, goalCh: -1, clearArmed: 0,
+  charX: new Float32Array(0), charY: new Float32Array(0), charW: new Float32Array(0), charH: new Float32Array(0), menuSelected: -1, navPct: -1
 };
 
 /* ================= DOM references ================= */
@@ -24,7 +25,7 @@ const el = {
   loadMsg: $('#load-msg'), bar: $('#bar'), info: $('#info'),
   wpm: $('#s-wpm'), acc: $('#s-acc'), errors: $('#s-err'), time: $('#s-time'), prog: $('#s-prog'),
   area: $('#area'), cFrom: $('#c-from'), cTo: $('#c-to'), viewport: $('#viewport'), sel: $('#sel'), pause: $('#btn-pause'), words: $('#words'), caret: $('#caret'), cap: $('#cap'),
-  hist: $('#hist'), lib: $('#lib-list'), chap: $('#chap'), search: $('#search'), q: $('#q'), qList: $('#q-list'), toc: $('#toc'), tocList: $('#toc-list'), settings: $('#settings'), toast: $('#toast'), hBest: $('#h-best'), hList: $('#h-list'), hClear: $('#h-clear'), readChapter: $('#read-chapter'), chapterPrev: $('#chapter-prev'), chapterNext: $('#chapter-next'), readerProgress: $('#reader-progress'), readerProgressBar: $('#reader-progress-bar')
+  hist: $('#hist'), lib: $('#lib-list'), chap: $('#chap'), search: $('#search'), q: $('#q'), qList: $('#q-list'), toc: $('#toc'), tocList: $('#toc-list'), settings: $('#settings'), toast: $('#toast'), hBest: $('#h-best'), hList: $('#h-list'), hClear: $('#h-clear'), chapterPicker: $('#chapter-picker'), chapterButton: $('#read-chapter-button'), chapterMenu: $('#read-chapter-menu'), chapterPrev: $('#chapter-prev'), chapterNext: $('#chapter-next'), readerProgress: $('#reader-progress'), readerProgressBar: $('#reader-progress-bar')
 };
 const IS_READER_PAGE = document.body.dataset.page === 'reader';
 const readerUrl = (id) => `reader.html?book=${encodeURIComponent(id)}`;
@@ -330,7 +331,7 @@ function loadText(doc) {
 
 /* ================= Typing engine ================= */
 /* Only a small window of the text is in the DOM at any time, so long PDFs stay fast. */
-const WINDOW = 5000, REBASE_LINE = 7; // a bigger typing area needs more lines ready
+const WINDOW = 3000, REBASE_LINE = 28; // keep enough text ready while avoiding frequent large DOM rebuilds
 
 function snapStart(i) { while (i > 0 && S.target[i - 1] !== ' ' && S.target[i - 1] !== '\n') i--; return i; }
 function snapEnd(i) { const n = S.target.length; while (i < n && S.target[i] !== ' ' && S.target[i] !== '\n') i++; return i; }
@@ -362,8 +363,27 @@ function renderWindow(ws, vl = 0) {
   el.words.replaceChildren(el.caret, frag);
   el.words.style.transform = `translateY(${-vl * S.lineH}px)`;
   void el.words.offsetHeight;
+  measureCharGeometry();
   el.words.style.transition = '';
   S.snap = true;
+}
+
+function measureCharGeometry() {
+  const chars = S.chars;
+  if (!chars.length) return;
+  if (S.charX.length !== chars.length) {
+    S.charX = new Float32Array(chars.length);
+    S.charY = new Float32Array(chars.length);
+    S.charW = new Float32Array(chars.length);
+    S.charH = new Float32Array(chars.length);
+  }
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i];
+    S.charX[i] = c.offsetLeft;
+    S.charY[i] = c.offsetTop;
+    S.charW[i] = c.offsetWidth;
+    S.charH[i] = c.offsetHeight;
+  }
 }
 
 const attrOf = (v) => (v === 1 ? 'c' : v === 2 ? (S.set.mode === 'zen' ? 'c' : 'x') : null);
@@ -382,7 +402,7 @@ function mark(i, v) {
 function lineStart(line) {
   const top = line * S.lineH - 1;
   let lo = 0, hi = S.chars.length - 1;
-  while (lo < hi) { const m = (lo + hi) >> 1; if (S.chars[m].offsetTop >= top) hi = m; else lo = m + 1; }
+  while (lo < hi) { const m = (lo + hi) >> 1; if (S.charY[m] >= top) hi = m; else lo = m + 1; }
   return lo;
 }
 
@@ -460,21 +480,20 @@ function moveCaret() {
   if (!n) return;
   if (S.follow) { // while typing the view always follows the cursor
     if (S.idx < S.ws || (S.idx >= S.we && S.we < n)) renderWindow(windowStartFor(S.idx));
-    const c = S.chars[Math.min(S.idx, S.we - 1) - S.ws];
-    setView(Math.max(0, Math.floor(c.offsetTop / S.lineH) - 1));
+    const ci = Math.min(S.idx, S.we - 1) - S.ws;
+    setView(Math.max(0, Math.floor(S.charY[ci] / S.lineH) - 1));
     if (S.set.blind > 0) { const sig = S.ws * 100 + S.vl; if (sig !== S.sig) { S.sig = sig; revealBlind(); } }
   }
   placeCaret();
 }
 
 function placeCaret() {
-  const n = S.target.length, k = S.idx - S.ws, st = el.caret.style;
-  const c = S.chars[Math.min(k, S.chars.length - 1)];
-  if (!c || k < 0 || (k >= S.chars.length && S.we < n)) { st.display = 'none'; return; }
+  const n = S.target.length, k = S.idx - S.ws, ci = Math.min(k, S.chars.length - 1), st = el.caret.style;
+  if (ci < 0 || k < 0 || (k >= S.chars.length && S.we < n)) { st.display = 'none'; return; }
   st.display = '';
-  st.left = c.offsetLeft + (S.idx >= n ? c.offsetWidth : 0) + 'px';
-  st.top = c.offsetTop + 'px';
-  st.height = c.offsetHeight + 'px';
+  st.left = S.charX[ci] + (S.idx >= n ? S.charW[ci] : 0) + 'px';
+  st.top = S.charY[ci] + 'px';
+  st.height = S.charH[ci] + 'px';
   if (S.snap) { void el.caret.offsetWidth; st.transition = ''; S.snap = false; }
 }
 
@@ -564,24 +583,46 @@ function fillChapterSelects() {
   const opt = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; return o; };
   el.cFrom.replaceChildren(opt(-1, 'Start of book'), ...labs.map((t, i) => opt(i, t)));
   el.cTo.replaceChildren(...labs.map((t, i) => opt(i, t)));
-  el.readChapter.replaceChildren(...(labs.length ? labs.map((t, i) => opt(i, t)) : [opt(-1, 'Whole book')]));
-  el.readChapter.disabled = !labs.length;
+  el.chapterMenu.replaceChildren(...labs.map((t, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chapter-option'; b.setAttribute('role', 'option');
+    b.dataset.chapter = i; b.textContent = chapterName(S.doc, i);
+    return b;
+  }));
+  S.menuSelected = -1;
+  el.chapterButton.disabled = !labs.length;
   el.cFrom.parentElement.hidden = el.cTo.parentElement.hidden = !labs.length;
   syncReaderNav();
+}
+
+function setChapterMenu(open, focusSelected = false) {
+  el.chapterMenu.hidden = !open;
+  el.chapterButton.setAttribute('aria-expanded', String(open));
+  if (!open || !focusSelected) return;
+  (el.chapterMenu.querySelector('.chapter-option.selected') || el.chapterMenu.querySelector('.chapter-option'))?.focus();
 }
 
 function syncReaderNav() {
   const chapters = S.doc?.chapters || [];
   const i = chapters.length ? Math.max(0, chapterAt(chapters, S.set.view === 'read' ? S.from : S.idx)) : -1;
-  if (i >= 0) el.readChapter.value = i;
+  const buttonLabel = i >= 0 ? `${chapterName(S.doc, i)} ▾` : 'Whole book';
+  if (el.chapterButton.textContent !== buttonLabel) el.chapterButton.textContent = buttonLabel;
+  if (S.menuSelected !== i) {
+    const previous = el.chapterMenu.children[S.menuSelected];
+    if (previous) { previous.setAttribute('aria-selected', 'false'); previous.classList.remove('selected'); }
+    const current = el.chapterMenu.children[i];
+    if (current) { current.setAttribute('aria-selected', 'true'); current.classList.add('selected'); }
+    S.menuSelected = i;
+  }
   el.chapterPrev.disabled = i <= 0;
   el.chapterNext.disabled = i < 0 || i >= chapters.length - 1;
   const span = Math.max(1, S.to - S.from);
   const here = S.set.view === 'read' ? (S.doc.pos ?? S.from) : S.idx;
   const atChapterEnd = S.set.view === 'read' && S.we >= Math.min(S.to, S.target.length) && S.vl >= maxViewLine();
   const pct = S.doc ? (atChapterEnd ? 100 : Math.max(0, Math.min(100, Math.floor(((here - S.from) / span) * 100)))) : 0;
-  el.readerProgress.textContent = S.doc ? `${pct}%` : '';
-  el.readerProgressBar.style.width = pct + '%';
+  const pctLabel = S.doc ? `${pct}%` : '';
+  if (el.readerProgress.textContent !== pctLabel) el.readerProgress.textContent = pctLabel;
+  if (S.navPct !== pct) { el.readerProgressBar.style.width = pct + '%'; S.navPct = pct; }
 }
 
 function selectReadChapter(i, position) {
@@ -1162,6 +1203,17 @@ function runSearch() {
 function onKeydown(e) {
   if (document.querySelector('dialog[open]')) return;
   if ((e.target instanceof HTMLInputElement && e.target !== el.cap) || e.target instanceof HTMLSelectElement) return;
+  if (!el.chapterMenu.hidden) {
+    const options = [...el.chapterMenu.querySelectorAll('.chapter-option')];
+    const at = options.indexOf(document.activeElement);
+    if (e.key === 'Escape') { e.preventDefault(); setChapterMenu(false); el.chapterButton.focus(); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      const next = e.key === 'Home' ? 0 : e.key === 'End' ? options.length - 1 : Math.max(0, Math.min(options.length - 1, (at < 0 ? 0 : at) + (e.key === 'ArrowDown' ? 1 : -1)));
+      options[next]?.focus(); return;
+    }
+    if (e.key === 'Enter' && at >= 0) { e.preventDefault(); options[at].click(); return; }
+  }
   const st = S.state;
   if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l') { e.preventDefault(); toggleTheme(); return; }
   const inBook = S.doc && (st === 'ready' || st === 'typing' || st === 'paused');
@@ -1241,7 +1293,7 @@ function init() {
     focusCap();
   });
   document.addEventListener('keydown', onKeydown);
-  window.addEventListener('resize', () => { if (S.doc && ['ready', 'typing', 'paused'].includes(S.state)) { S.lineH = parseFloat(getComputedStyle(el.words).lineHeight) || S.lineH; moveCaret(); } });
+  window.addEventListener('resize', () => { if (S.doc && ['ready', 'typing', 'paused'].includes(S.state)) { S.lineH = parseFloat(getComputedStyle(el.words).lineHeight) || S.lineH; measureCharGeometry(); moveCaret(); } });
 
   $('#btn-theme').addEventListener('click', toggleTheme);
   $('#btn-history').addEventListener('click', openHistory);
@@ -1259,7 +1311,15 @@ function init() {
   $('#btn-whole').addEventListener('click', () => { S.from = 0; S.to = S.target.length; applyRange(0); focusCap(); });
   el.cFrom.addEventListener('change', applyChapters);
   el.cTo.addEventListener('change', applyChapters);
-  el.readChapter.addEventListener('change', () => chooseChapter(+el.readChapter.value));
+  el.chapterButton.addEventListener('click', () => setChapterMenu(el.chapterMenu.hidden, el.chapterMenu.hidden));
+  el.chapterMenu.addEventListener('click', (e) => {
+    const option = e.target.closest('.chapter-option');
+    if (!option) return;
+    chooseChapter(+option.dataset.chapter);
+    setChapterMenu(false);
+    el.chapterButton.focus();
+  });
+  document.addEventListener('click', (e) => { if (!el.chapterPicker.contains(e.target)) setChapterMenu(false); });
   el.chapterPrev.addEventListener('click', () => chooseChapter(Math.max(0, chapterAt(S.doc.chapters, curPos()) - 1)));
   el.chapterNext.addEventListener('click', () => chooseChapter(Math.min(S.doc.chapters.length - 1, chapterAt(S.doc.chapters, curPos()) + 1)));
 

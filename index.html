@@ -56,8 +56,10 @@
     </div></div></div>
     <div id="reader-nav" aria-label="Chapter navigation">
       <button class="ghost" id="chapter-prev" type="button" aria-label="Previous chapter">‹</button>
-      <label class="sr" for="read-chapter">Choose chapter</label>
-      <select id="read-chapter" aria-label="Choose chapter"></select>
+      <div id="chapter-picker" class="chapter-picker">
+        <button id="read-chapter-button" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="read-chapter-menu">Chapter</button>
+        <div id="read-chapter-menu" role="listbox" aria-label="Choose chapter" hidden></div>
+      </div>
       <button class="ghost" id="chapter-next" type="button" aria-label="Next chapter">›</button>
       <span id="reader-progress"></span>
       <span class="chapter-progress"><i id="reader-progress-bar"></i></span>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Novel Type</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('novelType:theme')||'dark'}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:wght@400;500&family=Merriweather:wght@400&family=Atkinson+Hyperlegible:wght@400&family=Almendra:wght@400;700&family=Grenze+Gotisch:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-state="upload">
+<div class="glow" aria-hidden="true"></div>
+<header id="top">
+  <a class="brand" href="#" id="brand" aria-label="Novel Type home">Novel <b>Type</b></a>
+  <nav aria-label="Main">
+    <button class="ghost book-only" id="btn-toc" type="button">Contents</button>
+    <button class="ghost book-only" id="btn-search" type="button">Search</button>
+    <button class="ghost book-only" id="btn-view" type="button">Read</button>
+    <span class="nav-sep" aria-hidden="true"></span>
+    <button class="ghost" id="btn-home" type="button">Layout</button>
+    <button class="ghost" id="btn-history" type="button">History</button>
+    <button class="ghost" id="btn-settings" type="button">Settings</button>
+    <button class="ghost" id="btn-theme" type="button">Theme</button>
+  </nav>
+</header>
+
+<main>
+  <section id="view-upload" class="view" aria-labelledby="tagline">
+    <h1 id="tagline">Type your way through every book.</h1>
+    <p id="tag-sub" class="sub"></p>
+    <div id="lib" hidden>
+      <h2 class="lib-title">Your library</h2>
+      <ol id="lib-list"></ol>
+    </div>
+    <input id="file" class="sr" type="file" accept=".epub,application/epub+zip">
+    <label id="drop" class="drop" for="file">
+      <span class="big">Upload EPUB</span>
+      <span class="sub">Or drag a file here</span>
+    </label>
+    <p id="err" class="err" role="alert"></p>
+    <p class="note">EPUB files only, without DRM. Your book is read in this browser and never uploaded. Your place in each book is saved on this device.</p>
+    <p id="best" class="note"></p>
+  </section>
+
+  <section id="view-loading" class="view" aria-live="polite">
+    <p id="load-msg" class="big">Loading PDF…</p>
+    <div class="bar"><i id="bar"></i></div>
+  </section>
+
+  <section id="view-test" class="view">
+    <div class="fold"><div class="fold-in"><div class="book-head">
+      <h2 id="info" class="info book-title"></h2>
+      <p id="chap" class="info book-sub"></p>
+    </div></div></div>
+    <div id="stats" aria-label="Live statistics">
+      <div><b id="s-wpm">0</b><i>WPM</i></div>
+      <div><b id="s-acc">100%</b><i>Accuracy</i></div>
+      <div><b id="s-err">0</b><i>Errors</i></div>
+      <div><b id="s-time">00:00</b><i>Time</i></div>
+      <div><b id="s-prog">0%</b><i>Done</i></div>
+      <button class="ghost" id="btn-pause" type="button">Pause</button>
+    </div>
+    <div class="fold range-fold"><div class="fold-in"><div id="range">
+      <div class="rg-row">
+        <label><span>Start at</span><select id="c-from" aria-label="Start at"></select></label>
+        <label><span>Finish after</span><select id="c-to" aria-label="Finish after"></select></label>
+      </div>
+      <div class="rg-foot">
+        <span id="sel"></span>
+        <span class="rg-actions">
+          <button class="ghost" id="btn-reset-range" type="button">Story start</button>
+          <button class="ghost" id="btn-whole" type="button">Whole book</button>
+        </span>
+      </div>
+    </div></div></div>
+    <div id="area">
+      <div id="viewport" aria-label="Typing text">
+        <div id="words"><div id="caret"></div></div>
+      </div>
+    </div>
+    <div class="fold"><div class="fold-in"><p id="hint" class="note"></p></div></div>
+    <input id="cap" class="sr" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Typing input">
+  </section>
+
+  <section id="view-results" class="view" aria-live="polite">
+    <div class="r-top">
+      <div><i>WPM</i><b data-r="wpm"></b></div>
+      <div><i>Accuracy</i><b data-r="acc"></b></div>
+    </div>
+    <div class="r-row">
+      <div><i>Errors</i><b data-r="errors"></b></div>
+      <div><i>Time</i><b data-r="time"></b></div>
+      <div><i>Complete</i><b data-r="done"></b></div>
+    </div>
+    <div class="r-row small">
+      <div><i>Characters</i><b data-r="total"></b></div>
+      <div><i>Correct</i><b data-r="correct"></b></div>
+      <div><i>Incorrect</i><b data-r="incorrect"></b></div>
+      <div><i>Words</i><b data-r="words"></b></div>
+    </div>
+    <p class="info" data-r="file"></p>
+    <p class="info" data-r="note"></p>
+    <div class="actions">
+      <button class="btn" id="btn-continue" type="button" hidden>Continue</button>
+      <button class="btn" id="btn-retry" type="button">Retry</button>
+      <button class="btn" id="btn-new" type="button">Library</button>
+    </div>
+  </section>
+</main>
+
+<button id="btn-focus" class="orb" type="button" aria-label="Focus mode" aria-pressed="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+    <path d="M12 4.2a7.8 7.8 0 0 1 6.4 3.4"/><path d="M19.8 12a7.8 7.8 0 0 1-3.4 6.4"/>
+    <path d="M12 19.8a7.8 7.8 0 0 1-6.4-3.4"/><path d="M4.2 12a7.8 7.8 0 0 1 3.4-6.4"/>
+    <circle cx="12" cy="12" r="1.9" fill="currentColor" stroke="none"/>
+  </svg>
+</button>
+
+
+<dialog id="hist" aria-labelledby="h-title">
+  <div class="h-head"><h2 id="h-title">History</h2><button class="ghost" id="h-close" type="button">Close</button></div>
+  <div id="h-best" class="h-best"></div>
+  <div id="h-graph"></div>
+  <div id="h-keys"></div>
+  <p id="h-ach"></p>
+  <ol id="h-list"></ol>
+  <div class="h-actions">
+    <button class="ghost" id="h-export" type="button">Export data</button>
+    <input id="h-import" class="sr" type="file" accept="application/json">
+    <label class="ghost" for="h-import">Import data</label>
+    <button class="ghost danger" id="h-clear" type="button">Clear history</button>
+  </div>
+</dialog>
+
+<dialog id="toc" aria-labelledby="toc-title">
+  <div class="h-head"><h2 id="toc-title">Contents</h2><button class="ghost" data-close type="button">Close</button></div>
+  <h3>Chapters</h3>
+  <ol id="toc-list" class="plain"></ol>
+  <h3>Bookmarks</h3>
+  <ol id="bm-list" class="plain"></ol>
+  <button class="ghost" id="bm-add" type="button">Bookmark this spot</button>
+</dialog>
+
+<dialog id="search" aria-labelledby="q-title">
+  <div class="h-head"><h2 id="q-title">Search</h2><button class="ghost" data-close type="button">Close</button></div>
+  <input id="q" type="search" placeholder="Search this book" autocomplete="off" spellcheck="false" aria-label="Search this book">
+  <ol id="q-list" class="plain"></ol>
+</dialog>
+
+<dialog id="settings" aria-labelledby="set-title">
+  <div class="h-head"><h2 id="set-title">Settings</h2><button class="ghost" data-close type="button">Close</button></div>
+  <div class="set">
+    <label><span class="opt" data-tip="Dark, light, Vintage book (parchment and old print), or follow your device.">Theme</span> <select id="set-theme"><option value="dark">Dark</option><option value="light">Light</option><option value="vintage">Vintage book</option><option value="system">System</option></select></label>
+    <label><span class="opt" data-tip="The typeface used for your book.">Font</span> <select id="set-font"><option value="serif">Source Serif</option><option value="merri">Merriweather</option><option value="atk">Atkinson Hyperlegible</option><option value="sans">Inter</option><option value="mono">JetBrains Mono</option></select></label>
+    <label><span class="opt" data-tip="How large the book text is.">Font size</span> <input id="set-size" type="range" min="1.1" max="2.6" step="0.05"></label>
+    <label><span class="opt" data-tip="Space between lines. Higher feels airier.">Line height</span> <input id="set-lh" type="range" min="1.3" max="2.4" step="0.05"></label>
+    <label><span class="opt" data-tip="Extra space between letters.">Letter spacing</span> <input id="set-ls" type="range" min="-0.02" max="0.12" step="0.01"></label>
+    <label><span class="opt" data-tip="How wide the reading column is.">Text width</span> <input id="set-w" type="range" min="50" max="100" step="5"></label>
+    <label><span class="opt" data-tip="Two designs for the home page and the typing page. Classic is calm and centred. Radiance adds a soft light from the centre and a lighter, more open layout.">Layout</span> <select id="set-home"><option value="classic">Classic</option><option value="radiance">Radiance</option></select></label>
+    <label><span class="opt" data-tip="Type: practise while you read. Read: just read, with no typing at all.">Mode</span> <select id="set-view"><option value="type">Type</option><option value="read">Read only</option></select></label>
+    <label><span class="opt" data-tip="Normal keeps mistakes marked while you continue. Strict makes you fix a mistake before moving on. Zen counts mistakes but does not show them.">Mistakes</span> <select id="set-mode"><option value="normal">Normal</option><option value="strict">Strict</option><option value="zen">Zen</option></select></label>
+    <label><span class="opt" data-tip="Shows each new line for a few seconds, then hides the upcoming text so you type from memory.">Blind typing</span> <select id="set-blind"><option value="0">Off</option><option value="3">Hide after 3s</option><option value="6">Hide after 6s</option><option value="10">Hide after 10s</option></select></label>
+    <label><span class="opt" data-tip="Soft key sounds while you type. Off by default.">Key sounds</span> <select id="set-sound"><option value="off">Off</option><option value="soft">Soft</option><option value="mech">Mechanical</option><option value="type">Typewriter</option></select></label>
+    <label><span class="opt" data-tip="A gentle nudge when you reach a time, word or chapter goal.">Session goal</span> <select id="set-goal"><option value="none">None</option><option value="10m">10 minutes</option><option value="30m">30 minutes</option><option value="1000w">1,000 words</option><option value="chapter">End of chapter</option></select></label>
+  </div>
+  <h3>Keyboard shortcuts</h3>
+  <dl class="keys">
+    <dt><kbd>Tab</kbd></dt><dd>Restart</dd>
+    <dt><kbd>Esc</kbd></dt><dd>Leave and see your results</dd>
+    <dt><kbd>Ctrl</kbd> <kbd>Enter</kbd></dt><dd>Pause or resume</dd>
+    <dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>Search this book</dd>
+    <dt><kbd>Alt</kbd> <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Previous or next chapter</dd>
+    <dt><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>F</kbd></dt><dd>Focus mode</dd>
+    <dt><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>L</kbd></dt><dd>Change theme</dd>
+  </dl>
+  <div id="tip" role="tooltip"></div>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

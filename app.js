@@ -522,6 +522,19 @@ function backspace() {
   moveCaret();
 }
 
+function backspaceWord() {
+  if (S.idx <= S.pos0) return;
+  const end = S.idx;
+  let start = end;
+  while (start > S.pos0 && /\s/u.test(S.target[start - 1])) start--;
+  while (start > S.pos0 && !/\s/u.test(S.target[start - 1])) start--;
+  if (start === end) return;
+  for (let i = end - 1; i >= start; i--) mark(i, 0);
+  S.idx = start;
+  if (S.idx < S.ws) renderWindow(windowStartFor(S.idx));
+  moveCaret();
+}
+
 // Starts or resumes the timer; the view snaps back to the cursor.
 function resume() {
   S.sig = -1;
@@ -1259,6 +1272,7 @@ function onKeydown(e) {
     }
     return;
   }
+  if (e.ctrlKey && !e.altKey && e.key === 'Backspace') { e.preventDefault(); backspaceWord(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); if (st === 'typing') pause(); else if (st === 'paused') resume(); return; }
   if ((e.ctrlKey || e.metaKey) && !e.getModifierState('AltGraph')) return;
   if (e.key === 'Backspace') { e.preventDefault(); backspace(); return; }

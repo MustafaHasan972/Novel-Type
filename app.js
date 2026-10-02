@@ -53,12 +53,22 @@ function openDb() {
   return new Promise((res, rej) => {
     if (!window.indexedDB) return rej(new Error('IndexedDB unavailable'));
     const r = indexedDB.open('novelType', 1);
-    r.onupgradeneeded = () => { r.result.createObjectStore('books', { keyPath: 'id' }); r.result.createObjectStore('texts', { keyPath: 'id' }); };
-    r.onsuccess = () => res((DB = r.result));
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      if (!db.objectStoreNames.contains('books')) db.createObjectStore('books', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('texts')) db.createObjectStore('texts', { keyPath: 'id' });
+    };
+    r.onblocked = () => rej(new Error('IndexedDB upgrade blocked by another open Novel Type tab'));
+    r.onsuccess = () => {
+      const db = r.result;
+      db.onversionchange = () => { db.close(); if (DB === db) DB = null; };
+      res((DB = db));
+    };
     r.onerror = () => rej(r.error);
   });
 }
 const idb = (stores, mode, fn) => new Promise((res, rej) => {
+  if (!DB) return rej(new Error('Library storage is not available'));
   const t = DB.transaction(stores, mode);
   const r = fn(t);
   t.oncomplete = () => res(r && r.result);
@@ -115,7 +125,11 @@ function setState(s) {
   S.state = s;
   S.follow = s === 'typing';
   document.body.dataset.state = s;
-  if (s !== 'ready' && s !== 'typing' && s !== 'paused') { document.body.classList.remove('focus'); $('#btn-focus').setAttribute('aria-pressed', 'false'); }
+  if (s !== 'ready' && s !== 'typing' && s !== 'paused') {
+    document.body.classList.remove('focus');
+    $('#btn-focus').setAttribute('aria-pressed', 'false');
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  }
   if (s !== 'typing') { clearTimeout(S.blindT); document.body.classList.remove('blind'); }
   el.pause.textContent = s === 'paused' ? 'Resume' : 'Pause';
   if (s === 'ready' || s === 'typing' || s === 'paused') focusCap();
@@ -665,9 +679,16 @@ function selectReadChapter(i, position) {
 function chooseChapter(i) {
   if (!S.doc.chapters.length) return;
   if (S.set.view === 'read') { selectReadChapter(i); return; }
+  const chapters = S.doc.chapters;
+  i = Math.max(0, Math.min(chapters.length - 1, i));
+  S.from = chapters[i].start;
+  S.to = chapters[i + 1] ? chapters[i + 1].start - 1 : S.target.length;
   el.cFrom.value = i;
   el.cTo.value = i;
-  applyChapters();
+  setState('ready');
+  applyRange(S.from);
+  saveBook();
+  focusCap();
 }
 function syncRange() {
   const ch = S.doc.chapters, len = S.to - S.from;
@@ -878,9 +899,17 @@ function renderHistory() {
 }
 
 async function exportData() {
-  let books = [];
-  try { books = await idb('books', 'readonly', (t) => t.objectStore('books').getAll()); } catch { /* none */ }
-  const blob = new Blob([JSON.stringify({ app: 'novel-type', version: 1, exportedAt: Date.now(), settings: S.set, history: store.load(), books }, null, 1)], { type: 'application/json' });
+  let books = [], texts = [];
+  try {
+    [books, texts] = await new Promise((resolve, reject) => {
+      const tx = DB.transaction(['books', 'texts'], 'readonly');
+      const bookRequest = tx.objectStore('books').getAll();
+      const textRequest = tx.objectStore('texts').getAll();
+      tx.oncomplete = () => resolve([bookRequest.result || [], textRequest.result || []]);
+      tx.onerror = tx.onabort = () => reject(tx.error);
+    });
+  } catch { toast('Could not read the saved library for export.'); return; }
+  const blob = new Blob([JSON.stringify({ app: 'novel-type', version: 2, exportedAt: Date.now(), settings: S.set, history: store.load(), books, texts }, null, 1)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'novel-type-data.json';
@@ -896,17 +925,23 @@ async function importData(file) {
     store.save({ ...blankData(), ...data.history });
     if (data.settings) { S.set = { ...SET_DEFAULT, ...data.settings }; applySettings(); syncSettingsUI(); }
     const existing = DB ? await idb('books', 'readonly', (t) => t.objectStore('books').getAll()) : [];
+    const textById = new Map((data.texts || []).map((t) => [t.id, t]));
     const pending = {};
     for (const b of data.books || []) {
       const carry = { pos: b.pos, progress: b.progress, stats: b.stats, bookmarks: b.bookmarks || [], lastOpened: b.lastOpened };
       const cur = existing.find((x) => fp(x) === fp(b));
       if (cur) await idb('books', 'readwrite', (t) => t.objectStore('books').put({ ...cur, ...carry }));
-      else pending[fp(b)] = carry;
+      else if (textById.has(b.id)) {
+        await idb(['books', 'texts'], 'readwrite', (t) => {
+          t.objectStore('books').put(b);
+          t.objectStore('texts').put(textById.get(b.id));
+        });
+      } else pending[fp(b)] = carry;
     }
     writePending(pending);
     renderHistory();
     renderLibrary();
-    toast('Data imported. Add any missing books again to restore their progress.');
+    toast((data.texts?.length ? 'Backup restored, including saved books.' : 'Data imported. Add missing books again to restore their progress.'));
   } catch { toast('That file is not a Novel Type export.'); }
 }
 function openHistory() { renderHistory(); disarmClear(); openPanel(el.hist); }
@@ -976,10 +1011,20 @@ function toggleTheme() {
   applySettings();
   syncSettingsUI();
 }
-function toggleFocus() {
+async function toggleFocus() {
   const on = document.body.classList.toggle('focus');
   $('#btn-focus').setAttribute('aria-pressed', String(on));
-  if (on) toast('Focus mode. Press Esc to exit.'); else el.toast.classList.remove('show');
+  if (on) {
+    try {
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+      toast('Focus mode. Press Esc to exit.');
+    } catch {
+      toast('Focus mode is on. Fullscreen is unavailable here.');
+    }
+  } else {
+    el.toast.classList.remove('show');
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  }
   if (S.doc) focusCap();
 }
 function toggleView() {
@@ -1392,6 +1437,7 @@ function init() {
   $('#btn-focus').addEventListener('click', toggleFocus);
   $('#btn-settings').addEventListener('click', () => { syncSettingsUI(); openPanel(el.settings); });
   el.settings.addEventListener('input', onSettingsInput);
+  el.settings.addEventListener('change', onSettingsInput);
   let searchTimer = 0;
   el.q.addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 150); });
   document.querySelectorAll('dialog').forEach((d) => {
@@ -1445,6 +1491,7 @@ function init() {
 
   setState('upload');
   openDb().then(async () => {
+    try { await navigator.storage?.persist?.(); } catch { /* browser may decline durable storage */ }
     await renderLibrary();
     if (!IS_READER_PAGE) return;
     const id = new URLSearchParams(location.search).get('book');

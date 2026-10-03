@@ -5,7 +5,7 @@ const STORE_KEY = 'novelType:v1';
 // Dead keys (e.g. US-International layouts) report key "Dead"; map them back to the character.
 const DEAD = { Quote: ["'", '"'], Backquote: ['`', '~'], Digit6: ['6', '^'] };
 const THEME_KEY = 'novelType:theme';
-const MSG_NOTEXT = 'No readable text was found in this EPUB.';
+const MSG_NOTEXT = 'No readable text was found in this book.';
 
 const S = {
   state: 'upload',   // upload | loading | ready | typing | results
@@ -134,7 +134,25 @@ function setState(s) {
   el.pause.textContent = s === 'paused' ? 'Resume' : 'Pause';
   if (s === 'ready' || s === 'typing' || s === 'paused') focusCap();
 }
-function focusCap() { el.cap.focus({ preventScroll: true }); }
+function focusCap() {
+  if (mobileTypingRestricted()) { el.cap.blur(); return; }
+  el.cap.focus({ preventScroll: true });
+}
+function mobileTypingRestricted() {
+  return matchMedia('(max-width: 700px), (hover: none) and (pointer: coarse)').matches;
+}
+function switchMobileToReading() {
+  if (!mobileTypingRestricted() || S.set?.view !== 'type') return;
+  const position = S.doc?.pos ?? S.idx;
+  if (S.state === 'typing') pause();
+  S.set.view = 'read';
+  applySettings();
+  syncSettingsUI();
+  if (S.doc) {
+    selectReadChapter(Math.max(0, chapterAt(S.doc.chapters, position)), position);
+    if (S.state === 'paused') setState('ready');
+  }
+}
 function showError(msg) { el.err.textContent = msg; }
 function setProgress(pct, msg) { el.bar.style.width = pct + '%'; el.loadMsg.textContent = msg; }
 function refreshBest() {
@@ -258,6 +276,107 @@ async function parseEpub(file, progress) {
   return { title: meta('title'), author: meta('creator'), text, len, chapters };
 }
 
+/* ================= PDF processing ================= */
+const PDFJS_VERSION = '6.3.289';
+let pdfJsPromise;
+function getPdfJs() {
+  if (!pdfJsPromise) {
+    const base = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/legacy/build/`;
+    pdfJsPromise = import(`${base}pdf.mjs`).then((lib) => {
+      lib.GlobalWorkerOptions.workerSrc = `${base}pdf.worker.mjs`;
+      return lib;
+    }).catch((err) => { pdfJsPromise = null; err.code = 'PDF_ENGINE'; throw err; });
+  }
+  return pdfJsPromise;
+}
+
+// Reassemble PDF.js text fragments into readable lines using their page coordinates.
+function pdfPageText(items) {
+  const fragments = items.filter((item) => item.str && item.str.trim()).map((item) => ({
+    text: item.str, x: item.transform?.[4] ?? 0, y: item.transform?.[5] ?? 0,
+    width: item.width || 0, height: Math.abs(item.height || item.transform?.[3] || 10), end: !!item.hasEOL
+  })).sort((a, b) => b.y - a.y || a.x - b.x);
+  const lines = [];
+  for (const part of fragments) {
+    let line = lines[lines.length - 1];
+    const tolerance = Math.max(2, Math.min(8, part.height * 0.35));
+    if (!line || Math.abs(line.y - part.y) > tolerance || line.end) {
+      line = { y: part.y, height: part.height, end: false, parts: [] };
+      lines.push(line);
+    }
+    line.parts.push(part);
+    line.end = part.end;
+  }
+  return lines.map((line) => {
+    let value = '', last = null;
+    for (const part of line.parts) {
+      if (last) {
+        const gap = part.x - (last.x + last.width);
+        if (gap > Math.max(1.5, Math.min(last.height, part.height) * 0.18) && !/\s$/.test(value) && !/^\s/.test(part.text)) value += ' ';
+      }
+      value += part.text;
+      last = part;
+    }
+    return value.trim();
+  }).filter(Boolean).join('\n');
+}
+
+async function parsePdf(file, progress) {
+  const pdfjs = await getPdfJs();
+  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false, useSystemFonts: true });
+  let pdf;
+  try {
+    pdf = await loadingTask.promise;
+    const pageTexts = [], pageStarts = [];
+    let text = '', len = 0;
+    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+      progress((pageNo - 1) / pdf.numPages * 100, `Extracting PDF page ${pageNo} of ${pdf.numPages}…`);
+      if (pageNo % 3 === 1) await tick();
+      const page = await pdf.getPage(pageNo);
+      const content = await page.getTextContent();
+      const pageText = normalize(pdfPageText(content.items));
+      page.cleanup();
+      if (!pageText) continue;
+      if (len) { text += '\n'; len++; }
+      pageStarts.push({ page: pageNo, start: len });
+      pageTexts.push({ page: pageNo, start: len, text: pageText });
+      text += pageText;
+      len += Array.from(pageText).length;
+    }
+    if (Array.from(text).length < 50) throw Object.assign(new Error('No selectable text found'), { code: 'NO_TEXT' });
+
+    // Use embedded PDF bookmarks as chapter boundaries when available. Without them,
+    // keep the whole PDF as one chapter so a long document does not create a huge menu.
+    const chapters = [];
+    try {
+      const outline = await pdf.getOutline();
+      const entries = [];
+      const flatten = (nodes) => { for (const node of nodes || []) { if (node.title && node.dest) entries.push(node); flatten(node.items); } };
+      flatten(outline);
+      for (const node of entries) {
+        try {
+          const dest = typeof node.dest === 'string' ? await pdf.getDestination(node.dest) : node.dest;
+          if (!dest?.[0]) continue;
+          const page = await pdf.getPageIndex(dest[0]) + 1;
+          const point = pageTexts.find((p) => p.page >= page);
+          if (point) chapters.push({ title: normalize(node.title), start: point.start, page });
+        } catch { /* Ignore malformed or unsupported PDF bookmarks. */ }
+      }
+    } catch { /* PDF bookmarks are optional. */ }
+    chapters.sort((a, b) => a.start - b.start);
+    const uniqueChapters = chapters.filter((c, i) => c.title && (!i || c.start !== chapters[i - 1].start));
+    if (uniqueChapters.length) uniqueChapters[0].start = 0;
+    else uniqueChapters.push({ title: 'PDF', start: 0 });
+    progress(100, 'PDF ready…');
+    const metadata = await pdf.getMetadata().catch(() => null);
+    const info = metadata?.info || {};
+    return { title: info.Title || '', author: info.Author || '', text, len: Array.from(text).length, chapters: uniqueChapters, pageStarts, pageCount: pdf.numPages };
+  } finally {
+    if (pdf) await pdf.destroy().catch(() => {});
+    else await loadingTask.destroy().catch(() => {});
+  }
+}
+
 function chapterAt(ch, i) {
   let lo = 0, hi = ch.length - 1;
   while (lo < hi) { const m = (lo + hi + 1) >> 1; if (ch[m].start <= i) lo = m; else hi = m - 1; }
@@ -292,31 +411,34 @@ const fp = (b) => `${b.title}|${b.chars}`;
 async function handleFile(file) {
   if (!file || S.state === 'loading') return;
   showError('');
-  if (!(/\.epub$/i.test(file.name) || file.type === 'application/epub+zip')) return showError('Please upload an EPUB file.');
+  const isEpub = /\.epub$/i.test(file.name) || file.type === 'application/epub+zip';
+  const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+  if (!isEpub && !isPdf) return showError('Please upload an EPUB or PDF file.');
   if (file.size > MAX_BYTES) return showError('This file is too large to process in the browser.');
-  if (!window.JSZip) return showError('The EPUB reader could not load. Check your connection and reload the page.');
+  if (isEpub && !window.JSZip) return showError('The EPUB reader could not load. Check your connection and reload the page.');
   setState('loading');
-  setProgress(0, 'Opening EPUB…');
+  setProgress(0, isPdf ? 'Opening PDF…' : 'Opening EPUB…');
   try {
-    const r = await parseEpub(file, setProgress);
+    const r = isPdf ? await parsePdf(file, setProgress) : await parseEpub(file, setProgress);
     if (r.text.length < 50) { setState('upload'); return showError(MSG_NOTEXT); }
     const story = detectStory(r.chapters, r.len);
-    const title = r.title || file.name.replace(/\.epub$/i, '');
+    const title = r.title || file.name.replace(/\.(epub|pdf)$/i, '');
     const book = {
       id: newId(), title, author: r.author, filename: file.name, words: countWords(r.text), chars: r.len,
+      format: isPdf ? 'pdf' : 'epub', pageCount: r.pageCount || null,
       importedAt: Date.now(), lastOpened: Date.now(), pos: 0, progress: null, chapters: r.chapters, bookmarks: [],
       storyStart: story.start, storyEnd: story.end, stats: { sessions: 0, ms: 0, correct: 0, attempts: 0, errors: 0, words: 0, best: 0 }
     };
     const pend = readPending(), key = fp(book);
     if (pend[key]) { Object.assign(book, pend[key]); delete pend[key]; writePending(pend); }
-    try { await idb(['books', 'texts'], 'readwrite', (t) => { t.objectStore('books').put(book); t.objectStore('texts').put({ id: book.id, text: r.text }); }); }
+    try { await idb(['books', 'texts'], 'readwrite', (t) => { t.objectStore('books').put(book); t.objectStore('texts').put({ id: book.id, text: r.text, pageStarts: r.pageStarts || [] }); }); }
     catch { toast('Could not save this book to your library, so your progress will not be remembered.'); }
     window.location.href = readerUrl(book.id);
     return;
   } catch (err) {
     console.error(err);
     setState('upload');
-    showError(err && err.code === 'DRM' ? 'This EPUB is DRM-protected and cannot be read here.' : 'This EPUB could not be read. It may be corrupted.');
+    showError(err?.code === 'DRM' ? 'This EPUB is DRM-protected and cannot be read here.' : err?.code === 'NO_TEXT' ? 'This PDF has no selectable text. Scanned PDFs need OCR before they can be read.' : err?.code === 'PDF_ENGINE' ? 'The free PDF reader could not load. Check your connection and reload the page.' : `This ${isPdf ? 'PDF' : 'EPUB'} could not be read. It may be corrupted or password-protected.`);
   }
 }
 
@@ -1033,6 +1155,11 @@ async function toggleFocus() {
   if (S.doc) focusCap();
 }
 function toggleView() {
+  if (mobileTypingRestricted() && S.set.view === 'read') {
+    syncSettingsUI();
+    toast('This feature is for desktops only.');
+    return;
+  }
   S.set.view = S.set.view === 'read' ? 'type' : 'read';
   applySettings();
   syncSettingsUI();
@@ -1138,10 +1265,10 @@ async function renderLibrary() {
   try { books = await idb('books', 'readonly', (t) => t.objectStore('books').getAll()); } catch { /* storage unavailable */ }
   books.sort((a, b) => b.lastOpened - a.lastOpened);
   el.lib.replaceChildren(...books.map(bookRow));
-  $('#tag-sub').textContent = books.length ? 'Pick up where you left off, or add another book.' : 'Your library is empty. Upload an EPUB, choose where the story begins, and read it one keystroke at a time.';
+  $('#tag-sub').textContent = books.length ? 'Pick up where you left off, or add another book.' : 'Your library is empty. Upload an EPUB or PDF, choose where the story begins, and read it one keystroke at a time.';
   $('#lib').hidden = !books.length;
   el.drop.classList.toggle('compact', books.length > 0);
-  $('#drop .big').textContent = books.length ? 'Add another book' : 'Upload EPUB';
+  $('#drop .big').textContent = books.length ? 'Add another book' : 'Upload EPUB or PDF';
 }
 
 async function openBook(id) {
@@ -1338,9 +1465,13 @@ function onKeydown(e) {
 /* ================= Initialization ================= */
 function init() {
   S.set = loadSettings();
+  if (mobileTypingRestricted()) S.set.view = 'read';
   applySettings();
   syncSettingsUI();
   refreshBest();
+  const mobileQuery = matchMedia('(max-width: 700px), (hover: none) and (pointer: coarse)');
+  if (mobileQuery.addEventListener) mobileQuery.addEventListener('change', switchMobileToReading);
+  else mobileQuery.addListener(switchMobileToReading);
 
   el.file.addEventListener('change', () => { handleFile(el.file.files[0]); el.file.value = ''; });
   ['dragenter', 'dragover'].forEach((t) => el.drop.addEventListener(t, (e) => { e.preventDefault(); el.drop.classList.add('over'); }));
@@ -1348,7 +1479,9 @@ function init() {
   el.drop.addEventListener('drop', (e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); });
   ['dragover', 'drop'].forEach((t) => window.addEventListener(t, (e) => e.preventDefault()));
 
+  let suppressTouchClick = false;
   el.area.addEventListener('click', (e) => {
+    if (suppressTouchClick) { suppressTouchClick = false; return; }
     if (S.set.view === 'read') {
       const r = el.viewport.getBoundingClientRect();
       browsePage(e.clientX < r.left + r.width * .28 ? -1 : 1);
@@ -1356,6 +1489,28 @@ function init() {
     }
     focusCap();
   });
+  let touchStart = null;
+  el.viewport.addEventListener('touchstart', (e) => {
+    if (S.set.view !== 'read' || e.touches.length !== 1) return;
+    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, { passive: true });
+  el.viewport.addEventListener('touchend', (e) => {
+    if (!touchStart || S.set.view !== 'read') { touchStart = null; return; }
+    const t = e.changedTouches[0], dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+    touchStart = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 44) return;
+    suppressTouchClick = true;
+    setTimeout(() => { suppressTouchClick = false; }, 500);
+    if (Math.abs(dy) >= Math.abs(dx)) browsePage(dy < 0 ? 1 : -1);
+    else {
+      const chapters = S.doc?.chapters || [];
+      if (chapters.length) {
+        const current = Math.max(0, chapterAt(chapters, curPos()));
+        const next = current + (dx < 0 ? 1 : -1);
+        if (next >= 0 && next < chapters.length) chooseChapter(next);
+      }
+    }
+  }, { passive: true });
   document.addEventListener('keydown', onKeydown);
   window.addEventListener('resize', () => { if (S.doc && ['ready', 'typing', 'paused'].includes(S.state)) { S.lineH = parseFloat(getComputedStyle(el.words).lineHeight) || S.lineH; measureCharGeometry(); moveCaret(); } });
 

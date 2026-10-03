@@ -1275,7 +1275,7 @@ function applySettings() {
   document.body.dataset.view = v.view;
   document.body.dataset.home = 'radiance';
   const pdfReadOnly = S.doc?.format === 'pdf';
-  $('#btn-view').disabled = pdfReadOnly;
+  $('#btn-view').disabled = false;
   $('#btn-view').textContent = pdfReadOnly ? 'Read only' : v.view === 'read' ? 'Type' : 'Read';
   const viewSetting = document.getElementById('set-view');
   if (viewSetting) viewSetting.disabled = pdfReadOnly;
@@ -1319,7 +1319,20 @@ function toggleView() {
     S.set.view = 'read';
     applySettings();
     syncSettingsUI();
-    toast('PDFs are read-only.');
+    const tip = $('#tip');
+    const button = $('#btn-view');
+    if (tip && button) {
+      tip.replaceChildren(h('b', '', 'Read only'), document.createTextNode('PDFs are read-only.'));
+      const rect = button.getBoundingClientRect();
+      tip.classList.add('show');
+      requestAnimationFrame(() => {
+        const x = Math.max(8, Math.min(innerWidth - tip.offsetWidth - 8, rect.left + rect.width / 2 - tip.offsetWidth / 2));
+        const y = Math.min(innerHeight - tip.offsetHeight - 8, rect.bottom + 8);
+        tip.style.transform = `translate(${x}px, ${y}px)`;
+      });
+      clearTimeout(S.pdfReadOnlyTimer);
+      S.pdfReadOnlyTimer = setTimeout(() => tip.classList.remove('show'), 2600);
+    }
     return;
   }
   if (mobileTypingRestricted() && S.set.view === 'read') {
@@ -1433,7 +1446,7 @@ async function renderLibrary() {
   try { books = (await idb('books', 'readonly', (t) => t.objectStore('books').getAll())).map(cleanMeta).filter(Boolean); } catch { /* storage unavailable */ }
   books.sort((a, b) => b.lastOpened - a.lastOpened);
   el.lib.replaceChildren(...books.map(bookRow));
-  $('#tag-sub').textContent = books.length ? 'Pick up where you left off, or add another book.' : 'Your library is empty. Upload an EPUB or PDF, choose where the story begins, and read it one keystroke at a time.';
+  $('#tag-sub').textContent = books.length ? 'Pick up where you left off, or add another book.' : 'Your library is empty. Upload an EPUB to type or a PDF to read.';
   $('#lib').hidden = !books.length;
   el.drop.classList.toggle('compact', books.length > 0);
   $('#drop .big').textContent = books.length ? 'Add another book' : 'Upload EPUB or PDF';

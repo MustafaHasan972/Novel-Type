@@ -1489,20 +1489,67 @@ function init() {
     }
     focusCap();
   });
-  let touchStart = null;
-  el.viewport.addEventListener('touchstart', (e) => {
-    if (S.set.view !== 'read' || e.touches.length !== 1) return;
-    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  }, { passive: true });
-  el.viewport.addEventListener('touchend', (e) => {
-    if (!touchStart || S.set.view !== 'read') { touchStart = null; return; }
-    const t = e.changedTouches[0], dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+  let touchStart = null, pendingReadScroll = 0, readScrollFrame = 0;
+  const syncReadScrollPosition = () => {
+    if (S.set.view !== 'read' || !S.doc) return;
+    const p = S.ws + lineStart(S.vl);
+    S.doc.pos = p;
+    S.doc.progress = p >= S.from && p < S.to ? { from: S.from, to: S.to, pos: p } : null;
+    clearTimeout(S.rt);
+    S.rt = setTimeout(saveBook, 500);
+    updateStats();
+    syncReaderNav();
+  };
+  const scrollReadBy = (pixels) => {
+    if (!pixels || !S.lineH) return;
+    const lines = pixels / S.lineH;
+    const next = S.vl + lines;
+    if (next < 0 && S.ws > S.from) {
+      const remainder = next;
+      browse(-1);
+      setView(S.vl + remainder);
+    } else setView(next);
+  };
+  const flushReadScroll = () => {
+    readScrollFrame = 0;
+    const delta = pendingReadScroll;
+    pendingReadScroll = 0;
+    scrollReadBy(delta);
+  };
+  const stopReadTouch = () => {
     touchStart = null;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 44) return;
+    if (readScrollFrame) { cancelAnimationFrame(readScrollFrame); flushReadScroll(); }
+    document.body.classList.remove('read-touch-scrolling');
+  };
+  el.viewport.addEventListener('touchstart', (e) => {
+    if (S.set.view !== 'read' || e.touches.length !== 1) { stopReadTouch(); return; }
+    if (readScrollFrame) { cancelAnimationFrame(readScrollFrame); flushReadScroll(); }
+    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, lastY: e.touches[0].clientY, axis: '' };
+  }, { passive: true });
+  el.viewport.addEventListener('touchmove', (e) => {
+    if (!touchStart || S.set.view !== 'read' || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - touchStart.x, dy = touch.clientY - touchStart.y;
+    if (!touchStart.axis && Math.max(Math.abs(dx), Math.abs(dy)) > 8) touchStart.axis = Math.abs(dy) >= Math.abs(dx) ? 'vertical' : 'horizontal';
+    if (!touchStart.axis) return;
+    e.preventDefault();
+    if (touchStart.axis === 'vertical') {
+      document.body.classList.add('read-touch-scrolling');
+      pendingReadScroll += touchStart.lastY - touch.clientY;
+      if (!readScrollFrame) readScrollFrame = requestAnimationFrame(flushReadScroll);
+    }
+    touchStart.lastY = touch.clientY;
+  }, { passive: false });
+  el.viewport.addEventListener('touchend', (e) => {
+    if (!touchStart || S.set.view !== 'read') { stopReadTouch(); return; }
+    const gesture = touchStart;
+    const t = e.changedTouches[0], dx = t.clientX - gesture.x, dy = t.clientY - gesture.y;
+    stopReadTouch();
+    if (!gesture.axis) return;
     suppressTouchClick = true;
     setTimeout(() => { suppressTouchClick = false; }, 500);
-    if (Math.abs(dy) >= Math.abs(dx)) browsePage(dy < 0 ? 1 : -1);
-    else {
+    if (gesture.axis === 'vertical') { syncReadScrollPosition(); return; }
+    if (gesture.axis === 'horizontal' && Math.abs(dx) >= 44) {
       const chapters = S.doc?.chapters || [];
       if (chapters.length) {
         const current = Math.max(0, chapterAt(chapters, curPos()));
@@ -1511,6 +1558,7 @@ function init() {
       }
     }
   }, { passive: true });
+  el.viewport.addEventListener('touchcancel', () => { stopReadTouch(); syncReadScrollPosition(); }, { passive: true });
   document.addEventListener('keydown', onKeydown);
   window.addEventListener('resize', () => { if (S.doc && ['ready', 'typing', 'paused'].includes(S.state)) { S.lineH = parseFloat(getComputedStyle(el.words).lineHeight) || S.lineH; measureCharGeometry(); moveCaret(); } });
 

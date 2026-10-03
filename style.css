@@ -555,6 +555,12 @@ body.focus[data-view="read"] #viewport{
   #h-list .d,#h-list .m{display:none}
   .actions,.r-top,.r-row{flex-wrap:wrap;justify-content:center;gap:.7rem}
 }
+/* Follow a reader's finger continuously on touch screens instead of turning a swipe
+   into a fixed page jump. Keep vertical motion under the reader's control. */
+@media (max-width:700px), (hover:none) and (pointer:coarse){
+  body[data-view="read"] #viewport{touch-action:pan-x pinch-zoom;overscroll-behavior:contain}
+  body.read-touch-scrolling[data-view="read"] #words{transition:none!important;will-change:transform}
+}
 @media(max-height:500px) and (orientation:landscape){
   #top{padding-block:.35rem}
   nav .ghost{padding:.3rem .45rem}

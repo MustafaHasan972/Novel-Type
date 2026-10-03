@@ -113,7 +113,7 @@ function commitSession(res) {
   store.save(d);
 }
 
-/* ================= UI helpers ================= *//* ================= UI helpers ================= */
+/* ================= UI helpers ================= */
 const tick = () => new Promise((r) => setTimeout(r));
 const fmt1 = (n) => String(+n.toFixed(1));
 function fmtTime(ms) {
@@ -277,21 +277,66 @@ async function parseEpub(file, progress) {
 }
 
 /* ================= PDF processing ================= */
-const PDFJS_VERSION = '6.3.289';
+// Older browsers lack Promise.withResolvers, which PDF.js relies on.
+if (!Promise.withResolvers) Promise.withResolvers = function () { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; };
+
+// PDF.js is loaded from ./vendor/pdfjs first (works offline), then from a CDN. Opening the page
+// straight from disk (file://) blocks local modules, so the CDN copy is what makes that case work.
+const PDFJS_VERSION = '4.4.168';
+const PDFJS_SOURCES = [
+  { base: new URL('./vendor/pdfjs/', document.currentScript?.src || document.baseURI).href, local: true },
+  { base: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/`, local: false }
+];
+let PDFJS_ACTIVE = PDFJS_SOURCES[0];
 let pdfJsPromise;
+async function loadPdfJsFrom(src) {
+  const lib = await import(`${src.base}legacy/build/pdf.min.mjs`);
+  let worker = `${src.base}legacy/build/pdf.worker.min.mjs`;
+  if (!src.local) { // browsers refuse cross-origin workers, so run a same-origin copy
+    try {
+      const r = await fetch(worker);
+      if (!r.ok) throw new Error('worker ' + r.status);
+      worker = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+    } catch { /* PDF.js falls back to running without a separate worker */ }
+  }
+  lib.GlobalWorkerOptions.workerSrc = worker;
+  return lib;
+}
 function getPdfJs() {
   if (!pdfJsPromise) {
-    const base = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/legacy/build/`;
-    pdfJsPromise = import(`${base}pdf.mjs`).then((lib) => {
-      lib.GlobalWorkerOptions.workerSrc = `${base}pdf.worker.mjs`;
-      return lib;
-    }).catch((err) => { pdfJsPromise = null; err.code = 'PDF_ENGINE'; throw err; });
+    pdfJsPromise = (async () => {
+      let last;
+      for (const src of PDFJS_SOURCES) {
+        try { const lib = await loadPdfJsFrom(src); PDFJS_ACTIVE = src; return lib; }
+        catch (e) { last = e; console.warn('PDF.js failed to load from', src.base, e); }
+      }
+      throw Object.assign(new Error(last?.message || 'PDF engine unavailable'), { code: 'PDF_ENGINE' });
+    })().catch((err) => { pdfJsPromise = null; throw err; });
   }
   return pdfJsPromise;
 }
 
-// Reassemble PDF.js text fragments into readable lines using their page coordinates.
-function pdfPageText(items) {
+let jszipPromise;
+function ensureJsZip() {
+  if (window.JSZip) return Promise.resolve();
+  if (!jszipPromise) {
+    const urls = ['./vendor/jszip.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'];
+    jszipPromise = new Promise((res, rej) => {
+      const next = () => {
+        const u = urls.shift();
+        if (!u) return rej(new Error('JSZip unavailable'));
+        const sc = document.createElement('script');
+        sc.src = u; sc.onload = () => (window.JSZip ? res() : next()); sc.onerror = () => { sc.remove(); next(); };
+        document.head.appendChild(sc);
+      };
+      next();
+    }).catch((e) => { jszipPromise = null; throw e; });
+  }
+  return jszipPromise;
+}
+
+// Reassemble PDF.js text fragments into lines (with coordinates) using their page positions.
+function pdfPageLines(items) {
   const fragments = items.filter((item) => item.str && item.str.trim()).map((item) => ({
     text: item.str, x: item.transform?.[4] ?? 0, y: item.transform?.[5] ?? 0,
     width: item.width || 0, height: Math.abs(item.height || item.transform?.[3] || 10), end: !!item.hasEOL
@@ -308,6 +353,7 @@ function pdfPageText(items) {
     line.end = part.end;
   }
   return lines.map((line) => {
+    line.parts.sort((a, b) => a.x - b.x);
     let value = '', last = null;
     for (const part of line.parts) {
       if (last) {
@@ -317,31 +363,96 @@ function pdfPageText(items) {
       value += part.text;
       last = part;
     }
-    return value.trim();
-  }).filter(Boolean).join('\n');
+    const a = line.parts[0], z = line.parts[line.parts.length - 1];
+    return { text: value.trim(), x: a.x, right: z.x + z.width, y: line.y, height: line.height };
+  }).filter((l) => l.text);
+}
+
+// Drops page numbers and running headers/footers (lines repeated at the page edges on many pages).
+function stripRunningLines(pages) {
+  const key = (l) => l.text.toLowerCase().replace(/\d+/g, '#').replace(/\s+/g, ' ');
+  const edges = (lines) => lines.map((l, i) => (i < 2 || i >= lines.length - 2 ? l : null));
+  const counts = new Map();
+  for (const p of pages) for (const k of new Set(edges(p.lines).filter(Boolean).map(key))) counts.set(k, (counts.get(k) || 0) + 1);
+  const min = Math.max(3, Math.ceil(pages.length * 0.4));
+  const repeated = pages.length >= 4 ? new Set([...counts].filter(([, c]) => c >= min).map(([k]) => k)) : new Set();
+  const lonePage = /^(page\s+)?\d{1,4}$/i;
+  for (const p of pages) {
+    const n = p.lines.length;
+    p.lines = p.lines.filter((l, i) => {
+      const edge = i < 2 || i >= n - 2;
+      if (!edge) return true;
+      if (repeated.has(key(l))) return false;
+      return !((i === 0 || i === n - 1) && lonePage.test(l.text));
+    });
+  }
+  return pages;
+}
+
+function joinPdfLines(a, b) {
+  if (/[A-Za-z\u00C0-\u024F]-$/.test(a) && /^[a-z\u00DF-\u00FF]/.test(b)) return a.slice(0, -1) + b;
+  return a + ' ' + b;
+}
+
+// Turns wrapped lines back into paragraphs: a new one starts after a larger vertical gap, or after
+// a sentence end followed by a short line or an indent.
+function linesToParagraphs(lines) {
+  if (!lines.length) return [];
+  const gaps = [];
+  for (let i = 1; i < lines.length; i++) { const g = lines[i - 1].y - lines[i].y; if (g > 0) gaps.push(g); }
+  gaps.sort((a, b) => a - b);
+  const pitch = gaps.length ? gaps[gaps.length >> 1] : lines[0].height * 1.2;
+  let left = Infinity, right = -Infinity;
+  for (const l of lines) { if (l.x < left) left = l.x; if (l.right > right) right = l.right; }
+  const width = Math.max(1, right - left);
+  const paras = [];
+  let cur = lines[0].text;
+  for (let i = 1; i < lines.length; i++) {
+    const prev = lines[i - 1], l = lines[i];
+    const ended = /[.!?:;"'\u201D\u2019)\]]$/.test(prev.text);
+    const shortPrev = prev.right < right - width * 0.15;
+    const indent = l.x > left + Math.max(l.height * 0.8, 8);
+    if (prev.y - l.y > pitch * 1.5 || (ended && (shortPrev || indent))) { paras.push(cur); cur = l.text; }
+    else cur = joinPdfLines(cur, l.text);
+  }
+  paras.push(cur);
+  return paras;
 }
 
 async function parsePdf(file, progress) {
-  const pdfjs = await getPdfJs();
-  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false, useSystemFonts: true });
-  let pdf;
+  const lib = await getPdfJs();
+  const pdfLoadingTask = lib.getDocument({
+    data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false, useSystemFonts: true,
+    cMapUrl: `${PDFJS_ACTIVE.base}cmaps/`, cMapPacked: true, iccUrl: `${PDFJS_ACTIVE.base}iccs/`,
+    standardFontDataUrl: `${PDFJS_ACTIVE.base}standard_fonts/`, wasmUrl: `${PDFJS_ACTIVE.base}wasm/`
+  });
+  const pdf = await pdfLoadingTask.promise;
   try {
-    pdf = await loadingTask.promise;
-    const pageTexts = [], pageStarts = [];
+    const pageTexts = [], pageStarts = [], rawPages = [];
     let text = '', len = 0;
     for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
       progress((pageNo - 1) / pdf.numPages * 100, `Extracting PDF page ${pageNo} of ${pdf.numPages}…`);
       if (pageNo % 3 === 1) await tick();
       const page = await pdf.getPage(pageNo);
       const content = await page.getTextContent();
-      const pageText = normalize(pdfPageText(content.items));
+      rawPages.push({ page: pageNo, lines: pdfPageLines(content.items) });
       page.cleanup();
-      if (!pageText) continue;
-      if (len) { text += '\n'; len++; }
-      pageStarts.push({ page: pageNo, start: len });
-      pageTexts.push({ page: pageNo, start: len, text: pageText });
+    }
+    stripRunningLines(rawPages);
+    let tail = '';
+    for (const p of rawPages) {
+      const paras = linesToParagraphs(p.lines).map(normalize).filter(Boolean);
+      if (!paras.length) continue;
+      if (len) { // a sentence that runs across a page break stays one paragraph
+        const sep = tail && !/[.!?:"')\]]$/.test(tail) && /^[a-z]/.test(paras[0]) ? ' ' : '\n';
+        text += sep; len++;
+      }
+      const pageText = paras.join('\n');
+      pageStarts.push({ page: p.page, start: len });
+      pageTexts.push({ page: p.page, start: len, text: pageText });
       text += pageText;
       len += Array.from(pageText).length;
+      tail = paras[paras.length - 1];
     }
     if (Array.from(text).length < 50) throw Object.assign(new Error('No selectable text found'), { code: 'NO_TEXT' });
 
@@ -372,8 +483,8 @@ async function parsePdf(file, progress) {
     const info = metadata?.info || {};
     return { title: info.Title || '', author: info.Author || '', text, len: Array.from(text).length, chapters: uniqueChapters, pageStarts, pageCount: pdf.numPages };
   } finally {
-    if (pdf) await pdf.destroy().catch(() => {});
-    else await loadingTask.destroy().catch(() => {});
+    // Destroy the loading task; PDFDocumentProxy does not expose destroy().
+    try { await pdfLoadingTask.destroy?.(); } catch { /* Parsed content remains usable. */ }
   }
 }
 
@@ -415,7 +526,7 @@ async function handleFile(file) {
   const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
   if (!isEpub && !isPdf) return showError('Please upload an EPUB or PDF file.');
   if (file.size > MAX_BYTES) return showError('This file is too large to process in the browser.');
-  if (isEpub && !window.JSZip) return showError('The EPUB reader could not load. Check your connection and reload the page.');
+  if (isEpub) { try { await ensureJsZip(); } catch { return showError('The EPUB reader could not load. Check your connection and reload the page.'); } }
   setState('loading');
   setProgress(0, isPdf ? 'Opening PDF…' : 'Opening EPUB…');
   try {
@@ -438,13 +549,22 @@ async function handleFile(file) {
   } catch (err) {
     console.error(err);
     setState('upload');
-    showError(err?.code === 'DRM' ? 'This EPUB is DRM-protected and cannot be read here.' : err?.code === 'NO_TEXT' ? 'This PDF has no selectable text. Scanned PDFs need OCR before they can be read.' : err?.code === 'PDF_ENGINE' ? 'The free PDF reader could not load. Check your connection and reload the page.' : `This ${isPdf ? 'PDF' : 'EPUB'} could not be read. It may be corrupted or password-protected.`);
+    const message = err?.code === 'DRM' ? 'This EPUB is DRM-protected and cannot be read here.'
+      : err?.code === 'NO_TEXT' ? 'This PDF has no selectable text. Scanned PDFs need OCR before they can be read.'
+        : err?.name === 'PasswordException' ? 'This PDF is password-protected.'
+          : err?.code === 'PDF_ENGINE' ? (location.protocol === 'file:' ? 'The PDF reader could not load from a local file. Connect to the internet, or serve this folder over http (for example: python -m http.server) with the vendor/pdfjs folder included.' : 'The PDF reader could not load. Check your connection, or include the vendor/pdfjs folder next to this app, then reload.')
+            : isPdf ? `PDF import failed: ${err?.message || 'the PDF could not be parsed.'}`
+              : 'This EPUB could not be read. It may be corrupted.';
+    showError(message);
   }
 }
 
 function loadText(doc) {
   doc.bookmarks = doc.bookmarks || [];
   S.doc = doc;
+  S.set.view = doc.format === 'pdf' || mobileTypingRestricted() ? 'read' : (S.pref || 'type');
+  applySettings();
+  syncSettingsUI();
   S.target = Array.from(doc.text);
   S.lower = null;
   S.keyStat = {};
@@ -922,8 +1042,15 @@ function leave() {
   clearInterval(S.timer);
   if (S.start) { S.spent += performance.now() - S.start; S.start = 0; }
   saveProgress();
+  if (S.attempts === 0) { newPdf(); return; } // nothing typed: no empty session in the statistics
   const res = sessionResult();
   commitSession(res);
+  if (res.totalCharacters >= 50) { // abandoned sessions appear in History too
+    const d = store.load();
+    d.results.unshift(res);
+    d.results.length = Math.min(d.results.length, 100);
+    store.save(d);
+  }
   showResults(res, false);
 }
 
@@ -931,6 +1058,16 @@ function exitTest() {
   if (S.set.view === 'read') { newPdf(); return; }
   if (S.state === 'typing' || S.state === 'paused') leave();
   else if (S.state !== 'upload' && S.state !== 'loading') newPdf();
+}
+
+// Tab mid-session: keep what was typed in the statistics, then start over from where this session began.
+function restartSession() {
+  clearInterval(S.timer);
+  if (S.start) { S.spent += performance.now() - S.start; S.start = 0; }
+  if (S.attempts > 0) commitSession(sessionResult());
+  resetRun();
+  setState('ready');
+  syncRange();
 }
 
 function retry() {
@@ -1036,7 +1173,11 @@ async function exportData() {
       tx.onerror = tx.onabort = () => reject(tx.error);
     });
   } catch { toast('Could not read the saved library for export.'); return; }
-  const blob = new Blob([JSON.stringify({ app: 'novel-type', version: 2, exportedAt: Date.now(), settings: S.set, history: store.load(), books, texts }, null, 1)], { type: 'application/json' });
+  // Built from separate pieces so a large library never needs one giant string.
+  const parts = [`{"app":"novel-type","version":2,"exportedAt":${Date.now()},"settings":${JSON.stringify({ ...S.set, view: S.pref || S.set.view })},"history":${JSON.stringify(store.load())},"books":${JSON.stringify(books)},"texts":[`];
+  texts.forEach((t, i) => { if (i) parts.push(','); parts.push(JSON.stringify(t)); });
+  parts.push(']}');
+  const blob = new Blob(parts, { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'novel-type-data.json';
@@ -1044,17 +1185,33 @@ async function exportData() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+const num = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
+// Repairs book records from old versions or imported files so the UI never meets a missing field.
+function cleanMeta(b) {
+  if (!b || typeof b !== 'object') return null;
+  const st = b.stats && typeof b.stats === 'object' ? b.stats : {};
+  return {
+    ...b, id: String(b.id ?? ''), title: String(b.title ?? 'Untitled'), author: String(b.author ?? ''),
+    chars: Math.max(1, num(b.chars, 1)), words: num(b.words), pos: Math.max(0, num(b.pos)), lastOpened: num(b.lastOpened, Date.now()),
+    chapters: Array.isArray(b.chapters) ? b.chapters.filter((c) => c && typeof c.title === 'string' && Number.isFinite(c.start)).sort((x, y) => x.start - y.start) : [],
+    bookmarks: Array.isArray(b.bookmarks) ? b.bookmarks.filter((x) => x && Number.isFinite(x.pos)) : [],
+    stats: { sessions: num(st.sessions), ms: num(st.ms), correct: num(st.correct), attempts: num(st.attempts), errors: num(st.errors), words: num(st.words), best: num(st.best) }
+  };
+}
+
 // Progress, stats and bookmarks are matched to books by title and length; books not yet in the library wait until re-added.
 async function importData(file) {
   try {
     const data = JSON.parse(await file.text());
     if (data.app !== 'novel-type') throw new Error('bad file');
-    store.save({ ...blankData(), ...data.history });
-    if (data.settings) { S.set = { ...SET_DEFAULT, ...data.settings }; applySettings(); syncSettingsUI(); }
-    const existing = DB ? await idb('books', 'readonly', (t) => t.objectStore('books').getAll()) : [];
-    const textById = new Map((data.texts || []).map((t) => [t.id, t]));
+    store.save({ ...blankData(), ...(data.history && typeof data.history === 'object' ? data.history : {}) });
+    if (data.settings && typeof data.settings === 'object') { S.set = { ...SET_DEFAULT, ...data.settings }; S.pref = S.set.view; if (mobileTypingRestricted() || S.doc?.format === 'pdf') S.set.view = 'read'; applySettings(); syncSettingsUI(); }
+    const existing = DB ? (await idb('books', 'readonly', (t) => t.objectStore('books').getAll())).map(cleanMeta).filter(Boolean) : [];
+    const textById = new Map((Array.isArray(data.texts) ? data.texts : []).filter((t) => t && typeof t.text === 'string').map((t) => [t.id, t]));
     const pending = {};
-    for (const b of data.books || []) {
+    for (const raw of Array.isArray(data.books) ? data.books : []) {
+      const b = cleanMeta(raw);
+      if (!b || !b.id) continue;
       const carry = { pos: b.pos, progress: b.progress, stats: b.stats, bookmarks: b.bookmarks || [], lastOpened: b.lastOpened };
       const cur = existing.find((x) => fp(x) === fp(b));
       if (cur) await idb('books', 'readwrite', (t) => t.objectStore('books').put({ ...cur, ...carry }));
@@ -1103,12 +1260,12 @@ function loadSettings() {
     const legacy = localStorage.getItem(THEME_KEY);
     const out = { ...SET_DEFAULT, ...(legacy ? { theme: legacy } : {}), ...JSON.parse(localStorage.getItem(SET_KEY) || '{}') };
     if (out.w > 100) out.w = 100; // older versions stored the width in pixels
-    delete out.home;
     return out;
   } catch { return { ...SET_DEFAULT }; }
 }
 function applySettings() {
   const r = document.documentElement, v = S.set;
+  if (S.doc?.format === 'pdf') v.view = 'read';
   r.dataset.theme = v.theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : v.theme;
   r.style.setProperty('--fs', v.size + 'rem');
   r.style.setProperty('--lhr', v.lh);
@@ -1117,9 +1274,12 @@ function applySettings() {
   r.style.setProperty('--reader', FONTS[v.font] || FONTS.mono);
   document.body.dataset.view = v.view;
   document.body.dataset.home = 'radiance';
-  delete v.home;
-  $('#btn-view').textContent = v.view === 'read' ? 'Type' : 'Read';
-  try { localStorage.setItem(SET_KEY, JSON.stringify(v)); localStorage.setItem(THEME_KEY, r.dataset.theme); } catch { /* ignore */ }
+  const pdfReadOnly = S.doc?.format === 'pdf';
+  $('#btn-view').disabled = pdfReadOnly;
+  $('#btn-view').textContent = pdfReadOnly ? 'Read only' : v.view === 'read' ? 'Type' : 'Read';
+  const viewSetting = document.getElementById('set-view');
+  if (viewSetting) viewSetting.disabled = pdfReadOnly;
+  try { localStorage.setItem(SET_KEY, JSON.stringify({ ...v, view: S.pref || v.view })); localStorage.setItem(THEME_KEY, r.dataset.theme); } catch { /* ignore */ }
 }
 function syncSettingsUI() { for (const k in SET_IDS) document.getElementById(SET_IDS[k]).value = S.set[k]; }
 function onSettingsInput() {
@@ -1155,12 +1315,20 @@ async function toggleFocus() {
   if (S.doc) focusCap();
 }
 function toggleView() {
+  if (S.doc?.format === 'pdf') {
+    S.set.view = 'read';
+    applySettings();
+    syncSettingsUI();
+    toast('PDFs are read-only.');
+    return;
+  }
   if (mobileTypingRestricted() && S.set.view === 'read') {
     syncSettingsUI();
     toast('This feature is for desktops only.');
     return;
   }
   S.set.view = S.set.view === 'read' ? 'type' : 'read';
+  S.pref = S.set.view;
   applySettings();
   syncSettingsUI();
   setState(S.state);
@@ -1262,7 +1430,7 @@ function bookRow(b) {
 
 async function renderLibrary() {
   let books = [];
-  try { books = await idb('books', 'readonly', (t) => t.objectStore('books').getAll()); } catch { /* storage unavailable */ }
+  try { books = (await idb('books', 'readonly', (t) => t.objectStore('books').getAll())).map(cleanMeta).filter(Boolean); } catch { /* storage unavailable */ }
   books.sort((a, b) => b.lastOpened - a.lastOpened);
   el.lib.replaceChildren(...books.map(bookRow));
   $('#tag-sub').textContent = books.length ? 'Pick up where you left off, or add another book.' : 'Your library is empty. Upload an EPUB or PDF, choose where the story begins, and read it one keystroke at a time.';
@@ -1276,11 +1444,12 @@ async function openBook(id) {
   setState('loading');
   setProgress(100, 'Opening book…');
   try {
-    const [meta, txt] = await Promise.all([
+    let [meta, txt] = await Promise.all([
       idb('books', 'readonly', (t) => t.objectStore('books').get(id)),
       idb('texts', 'readonly', (t) => t.objectStore('texts').get(id))
     ]);
     if (!meta || !txt) throw new Error('missing');
+    meta = cleanMeta(meta);
     meta.lastOpened = Date.now();
     if (meta.storyStart === undefined) { const st = detectStory(meta.chapters || [], meta.chars); meta.storyStart = st.start; meta.storyEnd = st.end; }
     loadText({ ...meta, name: meta.title, text: txt.text, pageStarts: txt.pageStarts });
@@ -1366,10 +1535,12 @@ function addBookmark() {
 
 function openSearch() { openPanel(el.search); el.q.select(); runSearch(); }
 
+// Lower-casing some characters changes the string length, which would misalign hit positions; those stay as they are.
+const foldCase = (t) => t.replace(/\p{Lu}/gu, (c) => { const l = c.toLowerCase(); return l.length === c.length ? l : c; });
 function runSearch() {
-  const q = el.q.value.trim().toLowerCase();
+  const q = foldCase(el.q.value.trim());
   if (q.length < 2) { el.qList.replaceChildren(h('li', 'empty', q ? 'Keep typing…' : 'Search this book.')); return; }
-  const lower = S.lower || (S.lower = S.doc.text.toLowerCase());
+  const lower = S.lower || (S.lower = foldCase(S.doc.text));
   const hits = [];
   for (let i = lower.indexOf(q); i !== -1 && hits.length < 60; i = lower.indexOf(q, i + 1)) hits.push(i);
   if (!hits.length) { el.qList.replaceChildren(h('li', 'empty', 'No matches found.')); return; }
@@ -1413,7 +1584,10 @@ function onKeydown(e) {
   if (st === 'loading') return;
   if (e.key === 'Escape') { e.preventDefault(); if (document.body.classList.contains('focus')) toggleFocus(); else exitTest(); return; }
   if (e.key === 'Tab') {
-    if (st !== 'upload' && S.set.view !== 'read') { e.preventDefault(); if (!e.repeat) retry(); }
+    if (st !== 'upload' && S.set.view !== 'read') {
+      e.preventDefault();
+      if (!e.repeat) { if (st === 'typing' || st === 'paused') restartSession(); else if (st === 'results') retry(); }
+    }
     return;
   }
   if (st === 'results') { // arrow keys move between Continue / Retry / Library; Enter presses the focused one
@@ -1465,6 +1639,7 @@ function onKeydown(e) {
 /* ================= Initialization ================= */
 function init() {
   S.set = loadSettings();
+  S.pref = S.set.view; // the reader's own choice; PDFs and phones override it only temporarily
   if (mobileTypingRestricted()) S.set.view = 'read';
   applySettings();
   syncSettingsUI();
@@ -1693,6 +1868,11 @@ function init() {
     const t = e.target.closest('.opt[data-tip]');
     if (t && !t.contains(e.relatedTarget)) tipHide();
   });
+  el.settings.addEventListener('focusin', (e) => {
+    const t = e.target.closest('label')?.querySelector('.opt[data-tip]');
+    if (t && t !== tipEl) tipShow(t, null);
+  });
+  el.settings.addEventListener('focusout', tipHide);
   el.settings.addEventListener('close', tipHide);
 
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (S.set.theme === 'system') applySettings(); });

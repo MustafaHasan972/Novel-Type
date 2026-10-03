@@ -491,6 +491,15 @@ body[data-view="type"] .ch[data-s="c"]{color:var(--text)}
 :root[data-theme="vintage"] dialog{color:var(--text);background:#755a32}
 @media(max-width:700px){:root[data-theme="vintage"] body::before{inset:4px}:root[data-theme="vintage"] body::after{inset:13px}}
 
+/* Keep the cursor line centered and softly fade text at the viewport edges. */
+body[data-view="type"][data-state="typing"] #viewport{
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0%,#000 18%,#000 82%,transparent 100%);
+  mask-image:linear-gradient(to bottom,transparent 0%,#000 18%,#000 82%,transparent 100%);
+}
+body[data-view="type"][data-state="typing"] #words{
+  transition:transform .32s cubic-bezier(.22,.7,.2,1);
+}
+
 /* Let the focused reading surface reclaim the space reserved by the hidden chrome. */
 body.focus #top,body.focus #foot{display:none}
 body.focus #view-test>.fold,body.focus #reader-nav,body.focus #stats{display:none}

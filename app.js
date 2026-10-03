@@ -349,7 +349,10 @@ const WINDOW = 3000, REBASE_LINE = 28; // keep enough text ready while avoiding 
 
 function snapStart(i) { while (i > 0 && S.target[i - 1] !== ' ' && S.target[i - 1] !== '\n') i--; return i; }
 function snapEnd(i) { const n = S.target.length; while (i < n && S.target[i] !== ' ' && S.target[i] !== '\n') i++; return i; }
-function windowStartFor(i) { return snapStart(Math.max(0, i - 150)); }
+function windowStartFor(i) {
+  const context = S.follow ? (Math.floor(visibleLines() / 2) + 3) * 68 : 150;
+  return snapStart(Math.max(0, i - context));
+}
 
 // Renders target[ws .. ws+WINDOW); vl is the first visible line inside the window.
 function renderWindow(ws, vl = 0) {
@@ -434,7 +437,7 @@ function maxViewLine() {
 function setView(vl) {
   const activeEnd = S.set.view === 'read' ? Math.min(S.to, S.target.length) : S.target.length;
   if (vl >= REBASE_LINE && S.we < activeEnd) { renderWindow(S.ws + lineStart(vl), 0); return; }
-  S.vl = Math.min(vl, maxViewLine());
+  S.vl = Math.max(0, Math.min(vl, maxViewLine()));
   el.words.style.transform = `translateY(${-S.vl * S.lineH}px)`;
 }
 
@@ -493,9 +496,11 @@ function moveCaret() {
   const n = S.target.length;
   if (!n) return;
   if (S.follow) { // while typing the view always follows the cursor
-    if (S.idx < S.ws || (S.idx >= S.we && S.we < n)) renderWindow(windowStartFor(S.idx));
+    const contextStart = windowStartFor(S.idx);
+    if (contextStart < S.ws || (S.idx >= S.we && S.we < n)) renderWindow(contextStart);
     const ci = Math.min(S.idx, S.we - 1) - S.ws;
-    setView(Math.max(0, Math.floor(S.charY[ci] / S.lineH) - 1));
+    const centerOffset = Math.floor(visibleLines() / 2);
+    setView(Math.floor(S.charY[ci] / S.lineH) - centerOffset);
     if (S.set.blind > 0) { const sig = S.ws * 100 + S.vl; if (sig !== S.sig) { S.sig = sig; revealBlind(); } }
   }
   placeCaret();

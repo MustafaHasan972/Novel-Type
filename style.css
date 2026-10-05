@@ -723,4 +723,15 @@ body[data-library-view="shelf"] #lib-list .shelf-items .lib-open{min-width:0}
 
 @media (max-width:700px), (hover:none) and (pointer:coarse){
   .library-tabs{display:none}
+  .library-group h3{visibility:visible;margin:.45rem 0 .2rem;font-size:.72rem;letter-spacing:.08em}
+  body[data-library-view="original"] #lib-list .shelf-items{gap:0;padding:.1rem 0 .35rem}
+  body[data-library-view="original"] #lib-list .shelf-items>li,
+  body[data-library-view="original"] #lib-list .shelf-items>li:last-child{min-height:3.5rem;gap:.45rem;padding:.25rem 0;border-bottom:1px solid color-mix(in srgb,var(--sub) 18%,transparent)}
+  body[data-library-view="original"] #lib-list .shelf-items .lib-open{display:flex;flex-direction:column;align-items:stretch;gap:.12rem;min-width:0;padding:.2rem 0;background:transparent;box-shadow:none;text-align:left}
+  body[data-library-view="original"] #lib-list .shelf-items .lib-open .lib-kind{display:none}
+  body[data-library-view="original"] #lib-list .shelf-items .lib-open b{display:block;overflow:hidden;padding:0;font-size:.92rem;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}
+  body[data-library-view="original"] #lib-list .shelf-items .lib-open>span:not(.lib-kind):nth-of-type(2){overflow:hidden;font-size:.74rem;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}
+  body[data-library-view="original"] #lib-list .shelf-items .lib-open>span:not(.lib-kind):nth-of-type(3){display:none}
+  body[data-library-view="original"] #lib-list .shelf-items .lib-open .prog{height:2px;margin:.15rem 0 0}
+  body[data-library-view="original"] #lib-list .shelf-items .lib-item .danger{width:auto;min-width:3.7rem;height:auto;min-height:0;padding:.3rem .45rem;font-size:.72rem;white-space:nowrap}
 }

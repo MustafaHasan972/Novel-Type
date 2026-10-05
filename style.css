@@ -133,7 +133,7 @@ body[data-state="typing"] #btn-pause{opacity:.5}
 .lib-open{flex:1;display:flex;flex-direction:column;gap:.15rem;text-align:left;background:none;border:0;padding:.2rem 0;color:var(--text)}
 .lib-open b{font-weight:500;font-size:1.05rem}
 .lib-open span{color:var(--sub);font-size:.85rem}
-.lib-open:hover b{color:var(--accent)}
+.lib-open:hover b{color:inherit}
 .drop.compact{padding:1.4rem 1rem}
 .book-only{display:none}
 body[data-state="ready"] .book-only,body[data-state="typing"] .book-only,body[data-state="paused"] .book-only{display:inline-block}
@@ -577,7 +577,7 @@ body.focus[data-view="read"] #viewport{
 #lib-list li:nth-child(5n + 3){--book-color:#635583}
 #lib-list li:nth-child(5n + 4){--book-color:#9a713a}
 #lib-list li:nth-child(5n){--book-color:#49627a}
-#lib-list .lib-open:hover{transform:translateY(-5px);border-color:var(--accent);box-shadow:5px 13px 20px rgba(0,0,0,.28),inset -1px 0 rgba(255,255,255,.12)}
+#lib-list .lib-open:hover{transform:translateY(-5px);border-color:rgba(var(--kb),.22);box-shadow:5px 13px 20px rgba(0,0,0,.28),inset -1px 0 rgba(255,255,255,.12)}
 #lib-list .lib-open b{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:4;font-size:1.02rem;line-height:1.35;text-wrap:balance}
 #lib-list .lib-open>span:not(.lib-kind){font-size:.77rem;line-height:1.4;overflow-wrap:anywhere}
 #lib-list .lib-kind{display:block;font-size:.62rem;line-height:1.2;letter-spacing:.12em;text-transform:uppercase;opacity:.78}

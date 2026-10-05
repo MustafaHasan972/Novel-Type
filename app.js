@@ -519,17 +519,76 @@ const readPending = () => { try { return JSON.parse(localStorage.getItem(PENDING
 const writePending = (o) => { try { localStorage.setItem(PENDING_KEY, JSON.stringify(o)); } catch { /* ignore */ } };
 const fp = (b) => `${b.title}|${b.chars}`;
 
-async function alreadyInLibrary(book, text) {
-  if (!DB) return false;
+function identityTokens(value) {
+  return String(value || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
+    .replace(/\.(epub|pdf)$/i, '').match(/[\p{L}\p{N}]+/gu)?.filter((word) => !['the', 'a', 'an', 'novel', 'edition', 'ebook', 'epub', 'pdf'].includes(word)) || [];
+}
+
+function tokenOverlap(a, b) {
+  if (!a.length || !b.length) return 0;
+  const small = a.length <= b.length ? a : b, large = new Set(a.length <= b.length ? b : a);
+  return small.filter((word) => large.has(word)).length / small.length;
+}
+
+function bookTextTokens(text) {
+  return String(text || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
+    .replace(/-\s*[\r\n]+\s*/g, '').match(/[\p{L}\p{N}]+/gu) || [];
+}
+
+function textShingles(tokens) {
+  const shingles = new Set(), span = 5;
+  const step = Math.max(1, Math.ceil((tokens.length - span + 1) / 120000));
+  for (let i = 0; i + span <= tokens.length; i += step) {
+    let hash = 2166136261;
+    for (let j = i; j < i + span; j++) {
+      const word = tokens[j];
+      for (let k = 0; k < word.length; k++) hash = Math.imul(hash ^ word.charCodeAt(k), 16777619);
+      hash = Math.imul(hash ^ 32, 16777619);
+    }
+    shingles.add(hash >>> 0);
+  }
+  return shingles;
+}
+
+function textSimilarity(a, b, shinglesA) {
+  if (Math.min(a.length, b.length) < 60) return 0;
+  const lengthRatio = Math.min(a.length, b.length) / Math.max(a.length, b.length);
+  if (lengthRatio < .62) return 0;
+  const left = shinglesA || textShingles(a), right = textShingles(b);
+  if (!left.size || !right.size) return 0;
+  let shared = 0;
+  for (const key of left) if (right.has(key)) shared++;
+  return shared / (left.size + right.size - shared);
+}
+
+async function findDuplicateBook(book, text) {
+  if (!DB) return null;
   try {
     const savedBooks = await idb('books', 'readonly', (t) => t.objectStore('books').getAll());
-    const candidates = savedBooks.filter((saved) => (saved.format || 'epub') === book.format && saved.chars === book.chars);
-    for (const saved of candidates) {
-      const stored = await idb('texts', 'readonly', (t) => t.objectStore('texts').get(saved.id));
-      if (stored?.text === text) return true;
+    const title = identityTokens(book.title), author = identityTokens(book.author).join(' ');
+    const candidates = savedBooks.map((saved) => {
+      const savedTitle = identityTokens(saved.title);
+      const savedAuthor = identityTokens(saved.author).join(' ');
+      const sameTitleAuthor = tokenOverlap(title, savedTitle) >= .8 && author && savedAuthor && author === savedAuthor;
+      const incomingWords = book.words || 0, savedWords = saved.words || Math.round((saved.chars || 0) / 5);
+      const wordRatio = Math.min(incomingWords, savedWords) / Math.max(incomingWords, savedWords, 1);
+      return { saved, sameTitleAuthor, wordRatio };
+    });
+    const titleAndAuthorMatch = candidates.find(({ sameTitleAuthor }) => sameTitleAuthor);
+    if (titleAndAuthorMatch) return titleAndAuthorMatch.saved;
+    const comparable = candidates.filter(({ wordRatio }) => wordRatio >= .62);
+    if (!comparable.length) return null;
+    const words = bookTextTokens(text), shingles = textShingles(words);
+    for (const candidate of comparable) {
+      const entry = candidate.saved;
+      const stored = await idb('texts', 'readonly', (t) => t.objectStore('texts').get(entry.id));
+      if (!stored || typeof stored.text !== 'string') continue;
+      if (stored.text === text) return entry;
+      const similarity = textSimilarity(words, bookTextTokens(stored.text), shingles);
+      if (similarity >= .72) return entry;
     }
   } catch { /* if storage cannot be read, let the existing save path report it */ }
-  return false;
+  return null;
 }
 
 /* ================= Upload handling ================= */
@@ -554,9 +613,10 @@ async function handleFile(file) {
       importedAt: Date.now(), lastOpened: Date.now(), pos: 0, progress: null, chapters: r.chapters, bookmarks: [],
       storyStart: story.start, storyEnd: story.end, stats: { sessions: 0, ms: 0, correct: 0, attempts: 0, errors: 0, words: 0, best: 0 }
     };
-    if (await alreadyInLibrary(book, r.text)) {
+    const duplicate = await findDuplicateBook(book, r.text);
+    if (duplicate) {
       setState('upload');
-      return showError('This file is already in your library.');
+      return showError(`“${duplicate.title}” is already in your library.`);
     }
     const pend = readPending(), key = fp(book);
     if (pend[key]) { Object.assign(book, pend[key]); delete pend[key]; writePending(pend); }

@@ -256,9 +256,9 @@ select:hover,select:focus,#range select:focus{border-color:var(--accent);outline
 kbd{font:inherit;font-size:.8rem;padding:.12rem .45rem;border-radius:6px;background:var(--bg);color:var(--text);border:1px solid var(--sub)}
 
 /* tooltip bubble */
-#tip{position:fixed;left:0;top:0;z-index:1000;max-width:250px;margin-top:6px;padding:.6rem .85rem;border-radius:12px;background:var(--bg);color:var(--text);border:1px solid var(--sub);font-size:.85rem;line-height:1.45;box-shadow:0 6px 18px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .12s ease,margin-top .12s ease}
-#tip.show{opacity:1;margin-top:0;transition:opacity .4s ease,margin-top .4s ease}
-#tip b{display:block;margin-bottom:.15rem;font-weight:500;color:var(--accent)}
+#tip,#pdf-tip{position:fixed;left:0;top:0;z-index:1000;max-width:250px;margin-top:6px;padding:.6rem .85rem;border-radius:12px;background:var(--bg);color:var(--text);border:1px solid var(--sub);font-size:.85rem;line-height:1.45;box-shadow:0 6px 18px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .12s ease,margin-top .12s ease}
+#tip.show,#pdf-tip.show{opacity:1;margin-top:0;transition:opacity .4s ease,margin-top .4s ease}
+#tip b,#pdf-tip b{display:block;margin-bottom:.15rem;font-weight:500;color:var(--accent)}
 
 /* ===== vintage book theme ===== */
 :root[data-theme="vintage"]{color-scheme:light;--bg:#d8c295;--panel:#cbb283;--sub:#7b6540;--text:#25160a;--accent:#8c1c13;--error:#a3140f;--error-bg:rgba(163,20,15,.16);--ui:'Almendra',Georgia,serif}
@@ -271,7 +271,7 @@ kbd{font:inherit;font-size:.8rem;padding:.12rem .45rem;border-radius:6px;backgro
 :root[data-theme="vintage"] .ch[data-s="c"]{color:#1c0f05}
 :root[data-theme="vintage"] dialog{background:#dfca9a;border:3px double #5a3a1c;border-radius:6px}
 :root[data-theme="vintage"] .drop,:root[data-theme="vintage"] #range{border:1px solid rgba(90,58,28,.5)}
-:root[data-theme="vintage"] #tip{background:#e6d3a6;border-color:#5a3a1c}
+:root[data-theme="vintage"] #tip,:root[data-theme="vintage"] #pdf-tip{background:#e6d3a6;border-color:#5a3a1c}
 
 /* ===== homepage: fog and keyboard ===== */
 :root{--kb:255,255,255}

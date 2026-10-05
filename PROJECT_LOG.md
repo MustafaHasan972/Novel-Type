@@ -38,3 +38,4 @@ I use this file to keep track of what has changed in NovelType and what still ne
 - 2026-10-03 — Made the PDF Read only button show a short notice beside itself when clicked, and clarified on the home screens that PDFs are read-only.
 - 2026-10-03 — Restyled the PDF read-only notice to use the same themed tooltip as settings help.
 - 2026-10-03 — Fixed the PDF notice not appearing by moving the shared tooltip outside the closed settings dialog.
+- 2026-10-05 — Restored the settings tooltip inside its modal layer and gave the PDF read-only notice a separate matching tooltip.

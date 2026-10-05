@@ -1319,7 +1319,7 @@ function toggleView() {
     S.set.view = 'read';
     applySettings();
     syncSettingsUI();
-    const tip = $('#tip');
+    const tip = $('#pdf-tip');
     const button = $('#btn-view');
     if (tip && button) {
       tip.replaceChildren(h('b', '', 'Read only'), document.createTextNode('PDFs are read-only.'));

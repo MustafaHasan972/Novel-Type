@@ -3,6 +3,7 @@
 /* ================= Application state ================= */
 const STORE_KEY = 'novelType:v1';
 const LIBRARY_VIEW_KEY = 'novelType:libraryView';
+let libraryViewPreference = 'shelf';
 // Dead keys (e.g. US-International layouts) report key "Dead"; map them back to the character.
 const DEAD = { Quote: ["'", '"'], Backquote: ['`', '~'], Digit6: ['6', '^'] };
 const THEME_KEY = 'novelType:theme';
@@ -1584,18 +1585,22 @@ async function renderLibrary() {
 }
 
 function setLibraryView(view, persist = true) {
-  const selected = view === 'original' ? 'original' : 'shelf';
+  libraryViewPreference = view === 'original' ? 'original' : 'shelf';
+  const mobile = matchMedia('(max-width:700px), (hover:none) and (pointer:coarse)').matches;
+  const selected = mobile ? 'original' : libraryViewPreference;
   document.body.dataset.libraryView = selected;
   document.querySelectorAll('[data-library-view]').forEach((tab) => {
     const active = tab.dataset.libraryView === selected;
     tab.setAttribute('aria-selected', String(active));
     tab.tabIndex = active ? 0 : -1;
   });
-  $('#lib-panel')?.setAttribute('aria-labelledby', `tab-library-${selected}`);
+  const panel = $('#lib-panel');
+  if (mobile) { panel?.removeAttribute('aria-labelledby'); panel?.setAttribute('aria-label', 'Library'); }
+  else { panel?.removeAttribute('aria-label'); panel?.setAttribute('aria-labelledby', `tab-library-${selected}`); }
   syncShelfControls(el.libBooks);
   syncShelfControls(el.libDocuments);
   if (persist) {
-    try { localStorage.setItem(LIBRARY_VIEW_KEY, selected); } catch { /* selection remains for this page */ }
+    try { localStorage.setItem(LIBRARY_VIEW_KEY, libraryViewPreference); } catch { /* selection remains for this page */ }
   }
 }
 
@@ -2004,7 +2009,7 @@ function init() {
     });
     list.addEventListener('scroll', () => syncShelfControls(list), { passive: true });
   });
-  window.addEventListener('resize', () => { syncShelfControls(el.libBooks); syncShelfControls(el.libDocuments); }, { passive: true });
+  window.addEventListener('resize', () => { setLibraryView(libraryViewPreference, false); }, { passive: true });
   $('.library-tabs')?.addEventListener('keydown', (e) => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
     e.preventDefault();

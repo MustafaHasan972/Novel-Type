@@ -721,12 +721,6 @@ body[data-library-view="shelf"] #lib-list .shelf-items .lib-open{min-width:0}
 :root[data-theme="nature"] #lib-list .pdf-document .lib-open .prog i{background:#82563b}
 :root[data-theme="nature"] #tip,:root[data-theme="nature"] #pdf-tip{background:#26372b;border-color:#71866c}
 
-@media(max-width:520px){
-  :root[data-theme="nature"] body[data-library-view="shelf"] #lib-list .shelf-items{gap:.35rem;padding:.8rem .2rem .65rem}
-  :root[data-theme="nature"] #lib-list .shelf-items .lib-open{height:204px;min-height:0;min-width:0;padding:.65rem .4rem .55rem;gap:.35rem}
-  :root[data-theme="nature"] #lib-list .epub-volume .lib-open{border-left:5px solid #b58b5a;border-radius:4px 7px 7px 4px;background:linear-gradient(90deg,rgba(28,19,12,.42),transparent 16%,rgba(255,238,198,.1) 19%,transparent 25%),repeating-linear-gradient(176deg,transparent 0 10px,rgba(238,210,165,.07) 11px,transparent 13px),linear-gradient(145deg,#80603c,#493624)}
-  :root[data-theme="nature"] #lib-list .epub-volume .lib-open::before{inset:6px 4px 6px 8px}
-  :root[data-theme="nature"] #lib-list .shelf-items .lib-open b{min-width:0;font-size:.78rem;line-height:1.24;-webkit-line-clamp:4;overflow-wrap:anywhere;word-break:normal}
-  :root[data-theme="nature"] #lib-list .shelf-items .lib-open>span:not(.lib-kind){min-width:0;font-size:.64rem;line-height:1.25;max-height:2.5em;overflow-wrap:anywhere;word-break:break-word}
-  :root[data-theme="nature"] #lib-list .shelf-items .lib-kind{font-size:.5rem;letter-spacing:.06em}
+@media (max-width:700px), (hover:none) and (pointer:coarse){
+  .library-tabs{display:none}
 }

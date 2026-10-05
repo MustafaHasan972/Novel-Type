@@ -64,3 +64,4 @@ I use this file to keep track of what has changed in NovelType and what still ne
 - 2026-10-05 — Added a Nature theme with forest greens and wood accents, plus wood-grain EPUB covers and brown paper styling for PDFs.
 - 2026-10-05 — Tuned the Nature library shelf for phone screens with roomier book covers, smaller spine borders, and readable title spacing.
 - 2026-10-05 — Reworked Nature book covers for mobile with a direct wood-grain background and explicit narrow-screen text wrapping.
+- 2026-10-05 — Switched the library to List automatically on phones and restored the saved Shelf/List preference when returning to desktop width.

@@ -1473,6 +1473,7 @@ async function renderLibrary() {
   $('#documents-group').hidden = pdfs.length === 0;
   $('#tag-sub').textContent = books.length ? 'Pick up where you left off, or add another book.' : 'Your library is empty. Upload an EPUB to type or a PDF to read.';
   $('#lib').hidden = !books.length;
+  requestAnimationFrame(() => { syncShelfControls(el.libBooks); syncShelfControls(el.libDocuments); });
   el.drop.classList.toggle('compact', books.length > 0);
   $('#drop .big').textContent = books.length ? 'Add another book' : 'Upload EPUB or PDF';
 }
@@ -1486,9 +1487,22 @@ function setLibraryView(view, persist = true) {
     tab.tabIndex = active ? 0 : -1;
   });
   $('#lib-panel')?.setAttribute('aria-labelledby', `tab-library-${selected}`);
+  syncShelfControls(el.libBooks);
+  syncShelfControls(el.libDocuments);
   if (persist) {
     try { localStorage.setItem(LIBRARY_VIEW_KEY, selected); } catch { /* selection remains for this page */ }
   }
+}
+
+function syncShelfControls(list) {
+  if (!list) return;
+  const controls = document.querySelector(`[data-shelf-controls="${list.id}"]`);
+  if (!controls) return;
+  const show = document.body.dataset.libraryView !== 'original' && list.children.length > 3;
+  controls.hidden = !show;
+  const maxScroll = list.scrollWidth - list.clientWidth;
+  controls.querySelector('[data-shelf-direction="-1"]').disabled = list.scrollLeft <= 1;
+  controls.querySelector('[data-shelf-direction="1"]').disabled = maxScroll <= 1 || list.scrollLeft >= maxScroll - 1;
 }
 
 async function openBook(id) {
@@ -1875,6 +1889,17 @@ function init() {
   $('#btn-focus').addEventListener('click', toggleFocus);
   $('#btn-settings').addEventListener('click', () => { syncSettingsUI(); openPanel(el.settings); });
   document.querySelectorAll('[data-library-view]').forEach((tab) => tab.addEventListener('click', () => setLibraryView(tab.dataset.libraryView)));
+  document.querySelectorAll('[data-shelf-controls]').forEach((controls) => {
+    const list = document.getElementById(controls.dataset.shelfControls);
+    if (!list) return;
+    controls.addEventListener('click', (e) => {
+      const button = e.target.closest('[data-shelf-direction]');
+      if (!button) return;
+      list.scrollBy({ left: list.clientWidth * Number(button.dataset.shelfDirection), behavior: 'smooth' });
+    });
+    list.addEventListener('scroll', () => syncShelfControls(list), { passive: true });
+  });
+  window.addEventListener('resize', () => { syncShelfControls(el.libBooks); syncShelfControls(el.libDocuments); }, { passive: true });
   $('.library-tabs')?.addEventListener('keydown', (e) => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
     e.preventDefault();

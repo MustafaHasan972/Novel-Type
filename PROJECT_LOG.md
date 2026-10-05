@@ -50,6 +50,7 @@ I use this file to keep track of what has changed in NovelType and what still ne
 - 2026-10-05 — Tightened the shelf section gap a little more.
 - 2026-10-05 — Added Shelf and Original tabs to switch between the bookshelf and compact library list; the chosen tab is saved on this device.
 - 2026-10-05 — Added distinct book-cover and PDF-paper treatments for Dark, Vintage, and Light themes.
+- 2026-10-05 — Limited each shelf to three visible items and added scroll arrows when more books or documents are available.
 - 2026-10-05 — Removed the accent-colored hover outline from shelf books and documents.
 - 2026-10-05 — Kept book and document titles in their normal color when hovered.
 - 2026-10-05 — Restored the previous Dark library styling while keeping the Vintage and Light treatments.

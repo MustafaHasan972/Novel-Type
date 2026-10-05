@@ -606,7 +606,7 @@ body.focus[data-view="read"] #viewport{
 #lib-list{display:grid;gap:.1rem;width:100%;max-width:none;margin:0;padding:0;overflow:visible;border:0;border-radius:0;background:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
 :root[data-theme="dark"] #lib-list,:root[data-theme="vintage"] #lib-list,:root[data-theme="light"] #lib-list{background:none;border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
 #lib-list:empty{display:none}
-.library-group{width:100%;min-width:0}
+.library-group{position:relative;width:100%;min-width:0}
 .library-group h3{visibility:hidden;margin:0 0 .55rem;color:var(--sub);font-size:.9rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase}
 .shelf-items{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.55rem .65rem;width:100%;max-width:none;margin:0;padding:1.1rem .6rem .75rem;list-style:none;overflow:visible;border:0;border-radius:0;background:none;box-shadow:none}
 #lib-list .shelf-items>li,#lib-list .shelf-items>li:last-child{position:relative;display:flex;flex:0 0 156px;flex-direction:column;align-items:stretch;gap:.35rem;width:156px;max-width:156px;height:274px;box-sizing:border-box;padding:0 0 .85rem;border:0}
@@ -677,3 +677,20 @@ body[data-library-view="original"] #lib-list .shelf-items .lib-item .danger{widt
 :root[data-theme="light"] #lib-list .pdf-document{--document-paper:#fbfaf6}
 :root[data-theme="light"] #lib-list .pdf-document .lib-open{background:repeating-linear-gradient(to bottom,transparent 0 34px,rgba(66,89,117,.08) 35px 36px),linear-gradient(90deg,transparent 0 1.05rem,rgba(78,119,166,.3) 1.05rem 1.12rem,transparent 1.12rem),var(--document-paper);border-color:rgba(74,87,102,.18);box-shadow:2px 6px 12px rgba(45,51,60,.14)}
 :root[data-theme="light"] #lib-list .pdf-document .lib-kind{color:#365c85}
+
+/* Keep three equal-sized items in view and page the rest sideways. */
+.shelf-controls{position:absolute;z-index:2;top:0;right:0;display:flex;gap:.2rem}
+.shelf-controls[hidden]{display:none}
+.shelf-controls button{width:1.85rem;height:1.85rem;padding:0;border:1px solid color-mix(in srgb,var(--sub) 36%,transparent);border-radius:50%;background:var(--bg);font-size:1.2rem;line-height:1}
+.shelf-controls button:disabled{opacity:.35;cursor:default}
+body[data-library-view="shelf"] #lib-list .shelf-items{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
+body[data-library-view="shelf"] #lib-list .shelf-items::-webkit-scrollbar{display:none}
+body[data-library-view="shelf"] #lib-list .shelf-items>li,
+body[data-library-view="shelf"] #lib-list .shelf-items>li:last-child{flex:0 0 calc((100% - 1.3rem)/3);width:calc((100% - 1.3rem)/3);max-width:calc((100% - 1.3rem)/3);min-width:0;scroll-snap-align:start}
+body[data-library-view="shelf"] #lib-list .shelf-items .pdf-document{flex-basis:calc((100% - 1.3rem)/3);width:calc((100% - 1.3rem)/3);max-width:calc((100% - 1.3rem)/3)}
+body[data-library-view="shelf"] #lib-list .shelf-items .lib-open{min-width:0}
+@media(max-width:700px){
+  body[data-library-view="shelf"] #lib-list .shelf-items>li,
+  body[data-library-view="shelf"] #lib-list .shelf-items>li:last-child{flex-basis:calc((100% - .9rem)/3);width:calc((100% - .9rem)/3);max-width:calc((100% - .9rem)/3)}
+  body[data-library-view="shelf"] #lib-list .shelf-items .pdf-document{flex-basis:calc((100% - .9rem)/3);width:calc((100% - .9rem)/3);max-width:calc((100% - .9rem)/3)}
+}

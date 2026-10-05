@@ -39,10 +39,18 @@
         <div id="lib-list">
           <section class="library-group" id="books-group" aria-labelledby="books-heading">
             <h3 id="books-heading">Books</h3>
+            <div class="shelf-controls" data-shelf-controls="lib-books" hidden>
+              <button class="ghost" type="button" data-shelf-direction="-1" aria-label="Scroll books left">‹</button>
+              <button class="ghost" type="button" data-shelf-direction="1" aria-label="Scroll books right">›</button>
+            </div>
             <ol id="lib-books" class="shelf-items"></ol>
           </section>
           <section class="library-group" id="documents-group" aria-labelledby="documents-heading" hidden>
             <h3 id="documents-heading">Documents</h3>
+            <div class="shelf-controls" data-shelf-controls="lib-documents" hidden>
+              <button class="ghost" type="button" data-shelf-direction="-1" aria-label="Scroll documents left">‹</button>
+              <button class="ghost" type="button" data-shelf-direction="1" aria-label="Scroll documents right">›</button>
+            </div>
             <ol id="lib-documents" class="shelf-items"></ol>
           </section>
         </div>

@@ -703,7 +703,7 @@ body[data-library-view="shelf"] #lib-list .shelf-items .lib-open{min-width:0}
 :root[data-theme="nature"] .btn:hover{color:#17231b}
 :root[data-theme="nature"] #lib-list .epub-volume .lib-open{
   color:#f0e6d2;border-color:rgba(190,157,111,.48);border-left:8px ridge #b58b5a;
-  background:linear-gradient(90deg,rgba(28,19,12,.45),transparent 12%,rgba(255,238,198,.12) 15%,transparent 20%),repeating-linear-gradient(176deg,transparent 0 12px,rgba(238,210,165,.075) 13px,transparent 15px),linear-gradient(145deg,color-mix(in srgb,var(--book-color) 28%,#80603c),#493624);
+  background:linear-gradient(90deg,rgba(28,19,12,.45),transparent 12%,rgba(255,238,198,.12) 15%,transparent 20%),repeating-linear-gradient(176deg,transparent 0 12px,rgba(238,210,165,.075) 13px,transparent 15px),linear-gradient(145deg,#80603c,#493624);
   box-shadow:3px 8px 15px rgba(0,0,0,.3),inset -1px 0 rgba(255,239,196,.14)
 }
 :root[data-theme="nature"] #lib-list .epub-volume .lib-open::before{position:absolute;inset:8px 7px 8px 14px;border:1px solid rgba(222,190,139,.32);border-radius:2px;content:"";pointer-events:none}
@@ -723,10 +723,10 @@ body[data-library-view="shelf"] #lib-list .shelf-items .lib-open{min-width:0}
 
 @media(max-width:520px){
   :root[data-theme="nature"] body[data-library-view="shelf"] #lib-list .shelf-items{gap:.35rem;padding:.8rem .2rem .65rem}
-  :root[data-theme="nature"] #lib-list .shelf-items .lib-open{height:204px;min-height:0;padding:.65rem .4rem .55rem;gap:.35rem}
-  :root[data-theme="nature"] #lib-list .epub-volume .lib-open{border-left-width:5px}
+  :root[data-theme="nature"] #lib-list .shelf-items .lib-open{height:204px;min-height:0;min-width:0;padding:.65rem .4rem .55rem;gap:.35rem}
+  :root[data-theme="nature"] #lib-list .epub-volume .lib-open{border-left:5px solid #b58b5a;border-radius:4px 7px 7px 4px;background:linear-gradient(90deg,rgba(28,19,12,.42),transparent 16%,rgba(255,238,198,.1) 19%,transparent 25%),repeating-linear-gradient(176deg,transparent 0 10px,rgba(238,210,165,.07) 11px,transparent 13px),linear-gradient(145deg,#80603c,#493624)}
   :root[data-theme="nature"] #lib-list .epub-volume .lib-open::before{inset:6px 4px 6px 8px}
-  :root[data-theme="nature"] #lib-list .shelf-items .lib-open b{font-size:.78rem;line-height:1.24;-webkit-line-clamp:4;overflow-wrap:anywhere}
-  :root[data-theme="nature"] #lib-list .shelf-items .lib-open>span:not(.lib-kind){font-size:.64rem;line-height:1.25;max-height:2.5em;overflow-wrap:anywhere}
+  :root[data-theme="nature"] #lib-list .shelf-items .lib-open b{min-width:0;font-size:.78rem;line-height:1.24;-webkit-line-clamp:4;overflow-wrap:anywhere;word-break:normal}
+  :root[data-theme="nature"] #lib-list .shelf-items .lib-open>span:not(.lib-kind){min-width:0;font-size:.64rem;line-height:1.25;max-height:2.5em;overflow-wrap:anywhere;word-break:break-word}
   :root[data-theme="nature"] #lib-list .shelf-items .lib-kind{font-size:.5rem;letter-spacing:.06em}
 }

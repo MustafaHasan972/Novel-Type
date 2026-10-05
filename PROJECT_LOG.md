@@ -57,3 +57,8 @@ I use this file to keep track of what has changed in NovelType and what still ne
 - 2026-10-05 — Removed the “Your library” heading and renamed the Original view tab to List.
 - 2026-10-05 — Blocked re-uploads when the parsed file contents and format already exist in the library.
 - 2026-10-05 — Extended duplicate checks across EPUB/PDF formats using normalized title/author metadata and normalized text similarity.
+- 2026-10-05 — Made EPUB cover colors stable by deriving each book’s palette choice from its title and author instead of its shelf position.
+- 2026-10-05 — Assigned every EPUB a distinct saved cover color that stays with the book across sorting, reloads, and library imports.
+- 2026-10-05 — Shifted the book-cover palette to muted cool hues with softer differences in saturation and brightness.
+- 2026-10-05 — Restored the original five book-cover colors while keeping a distinct saved color assignment for every EPUB.
+- 2026-10-05 — Added a Nature theme with forest greens and wood accents, plus wood-grain EPUB covers and brown paper styling for PDFs.

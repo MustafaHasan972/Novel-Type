@@ -524,6 +524,39 @@ function identityTokens(value) {
     .replace(/\.(epub|pdf)$/i, '').match(/[\p{L}\p{N}]+/gu)?.filter((word) => !['the', 'a', 'an', 'novel', 'edition', 'ebook', 'epub', 'pdf'].includes(word)) || [];
 }
 
+function coverIdentity(book) {
+  return `${identityTokens(book.title).join(' ')}|${identityTokens(book.author).join(' ')}`;
+}
+
+function coverColor(slot) {
+  const palette = ['#8d5142', '#46685b', '#635583', '#9a713a', '#49627a'];
+  const base = palette[slot % palette.length];
+  const tier = Math.floor(slot / palette.length);
+  if (!tier) return base;
+  const step = (tier - 1) % 35;
+  const amount = 98 - step * 2;
+  const shade = Math.floor((tier - 1) / 35) % 2 ? '#111' : '#fff';
+  return `color-mix(in srgb, ${base} ${amount}%, ${shade})`;
+}
+
+function assignCoverSlots(books) {
+  const used = new Set(), changed = [];
+  const ordered = [...books].sort((a, b) => coverIdentity(a).localeCompare(coverIdentity(b)) || String(a.id).localeCompare(String(b.id)));
+  for (const book of ordered) {
+    if (Number.isSafeInteger(book.coverSlot) && book.coverSlot >= 0 && !used.has(book.coverSlot)) used.add(book.coverSlot);
+    else book.coverSlot = null;
+  }
+  for (const book of ordered) {
+    if (book.coverSlot !== null) continue;
+    let slot = 0;
+    while (used.has(slot)) slot++;
+    book.coverSlot = slot;
+    used.add(slot);
+    changed.push(book);
+  }
+  return changed;
+}
+
 function tokenOverlap(a, b) {
   if (!a.length || !b.length) return 0;
   const small = a.length <= b.length ? a : b, large = new Set(a.length <= b.length ? b : a);
@@ -618,9 +651,16 @@ async function handleFile(file) {
       setState('upload');
       return showError(`“${duplicate.title}” is already in your library.`);
     }
+    const storedBooks = await idb('books', 'readonly', (t) => t.objectStore('books').getAll());
+    const epubs = storedBooks.filter((item) => item.format !== 'pdf');
+    const colorUpdates = assignCoverSlots(epubs);
+    const usedSlots = new Set(epubs.map((item) => item.coverSlot));
+    let coverSlot = 0;
+    while (usedSlots.has(coverSlot)) coverSlot++;
+    if (book.format !== 'pdf') book.coverSlot = coverSlot;
     const pend = readPending(), key = fp(book);
     if (pend[key]) { Object.assign(book, pend[key]); delete pend[key]; writePending(pend); }
-    try { await idb(['books', 'texts'], 'readwrite', (t) => { t.objectStore('books').put(book); t.objectStore('texts').put({ id: book.id, text: r.text, pageStarts: r.pageStarts || [] }); }); }
+    try { await idb(['books', 'texts'], 'readwrite', (t) => { for (const item of colorUpdates) t.objectStore('books').put(item); t.objectStore('books').put(book); t.objectStore('texts').put({ id: book.id, text: r.text, pageStarts: r.pageStarts || [] }); }); }
     catch { toast('Could not save this book to your library, so your progress will not be remembered.'); }
     window.location.href = readerUrl(book.id);
     return;
@@ -1371,7 +1411,7 @@ function onSettingsInput() {
   if (S.doc) { S.lineH = parseFloat(getComputedStyle(el.words).lineHeight) || S.lineH; renderWindow(S.ws); placeCaret(); }
 }
 function toggleTheme() {
-  const order = ['dark', 'light', 'vintage'];
+  const order = ['dark', 'light', 'vintage', 'nature'];
   S.set.theme = order[(order.indexOf(document.documentElement.dataset.theme) + 1) % order.length];
   applySettings();
   syncSettingsUI();
@@ -1517,6 +1557,7 @@ function bookRow(b) {
   });
   const li = document.createElement('li');
   li.className = `lib-item ${b.format === 'pdf' ? 'pdf-document' : 'epub-volume'}`;
+  if (b.format !== 'pdf') li.style.setProperty('--book-color', coverColor(Number.isSafeInteger(b.coverSlot) ? b.coverSlot : 0));
   li.append(open, del);
   return li;
 }
@@ -1524,6 +1565,10 @@ function bookRow(b) {
 async function renderLibrary() {
   let books = [];
   try { books = (await idb('books', 'readonly', (t) => t.objectStore('books').getAll())).map(cleanMeta).filter(Boolean); } catch { /* storage unavailable */ }
+  const colorUpdates = assignCoverSlots(books.filter((book) => book.format !== 'pdf'));
+  if (colorUpdates.length) {
+    try { await idb('books', 'readwrite', (t) => { for (const book of colorUpdates) t.objectStore('books').put(book); }); } catch { /* keep colors for this render */ }
+  }
   books.sort((a, b) => b.lastOpened - a.lastOpened);
   const epubs = books.filter((book) => book.format !== 'pdf');
   const pdfs = books.filter((book) => book.format === 'pdf');

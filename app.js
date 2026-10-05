@@ -2,6 +2,7 @@
 
 /* ================= Application state ================= */
 const STORE_KEY = 'novelType:v1';
+const LIBRARY_VIEW_KEY = 'novelType:libraryView';
 // Dead keys (e.g. US-International layouts) report key "Dead"; map them back to the character.
 const DEAD = { Quote: ["'", '"'], Backquote: ['`', '~'], Digit6: ['6', '^'] };
 const THEME_KEY = 'novelType:theme';
@@ -25,7 +26,7 @@ const el = {
   loadMsg: $('#load-msg'), bar: $('#bar'), info: $('#info'),
   wpm: $('#s-wpm'), acc: $('#s-acc'), errors: $('#s-err'), time: $('#s-time'), prog: $('#s-prog'),
   area: $('#area'), cFrom: $('#c-from'), cTo: $('#c-to'), viewport: $('#viewport'), sel: $('#sel'), pause: $('#btn-pause'), words: $('#words'), caret: $('#caret'), cap: $('#cap'),
-  hist: $('#hist'), lib: $('#lib-list'), chap: $('#chap'), search: $('#search'), q: $('#q'), qList: $('#q-list'), toc: $('#toc'), tocList: $('#toc-list'), settings: $('#settings'), toast: $('#toast'), hBest: $('#h-best'), hList: $('#h-list'), hClear: $('#h-clear'), chapterPicker: $('#chapter-picker'), chapterButton: $('#read-chapter-button'), chapterMenu: $('#read-chapter-menu'), chapterPrev: $('#chapter-prev'), chapterNext: $('#chapter-next'), readerProgress: $('#reader-progress'), readerProgressBar: $('#reader-progress-bar')
+  hist: $('#hist'), libBooks: $('#lib-books'), libDocuments: $('#lib-documents'), chap: $('#chap'), search: $('#search'), q: $('#q'), qList: $('#q-list'), toc: $('#toc'), tocList: $('#toc-list'), settings: $('#settings'), toast: $('#toast'), hBest: $('#h-best'), hList: $('#h-list'), hClear: $('#h-clear'), chapterPicker: $('#chapter-picker'), chapterButton: $('#read-chapter-button'), chapterMenu: $('#read-chapter-menu'), chapterPrev: $('#chapter-prev'), chapterNext: $('#chapter-next'), readerProgress: $('#reader-progress'), readerProgressBar: $('#reader-progress-bar')
 };
 const IS_READER_PAGE = document.body.dataset.page === 'reader';
 const readerUrl = (id) => `reader.html?book=${encodeURIComponent(id)}`;
@@ -1419,6 +1420,7 @@ function bookRow(b) {
   const ci = b.chapters.length ? chapterAt(b.chapters, b.pos) : -1;
   const open = h('button', 'lib-open', '');
   open.append(
+    h('span', 'lib-kind', b.format === 'pdf' ? 'PDF · Document' : 'EPUB · Book'),
     h('b', '', b.title),
     h('span', '', [b.author, ci >= 0 ? chapterName(b, ci) : ''].filter(Boolean).join(' · ')),
     h('span', '', [`${pct}% complete`, wpm ? `${wpm} WPM average` : '', 'Opened ' + ago(b.lastOpened)].filter(Boolean).join(' · ')),
@@ -1437,6 +1439,7 @@ function bookRow(b) {
     idb(['books', 'texts'], 'readwrite', (t) => { t.objectStore('books').delete(b.id); t.objectStore('texts').delete(b.id); }).then(renderLibrary);
   });
   const li = document.createElement('li');
+  li.className = `lib-item ${b.format === 'pdf' ? 'pdf-document' : 'epub-volume'}`;
   li.append(open, del);
   return li;
 }
@@ -1445,11 +1448,30 @@ async function renderLibrary() {
   let books = [];
   try { books = (await idb('books', 'readonly', (t) => t.objectStore('books').getAll())).map(cleanMeta).filter(Boolean); } catch { /* storage unavailable */ }
   books.sort((a, b) => b.lastOpened - a.lastOpened);
-  el.lib.replaceChildren(...books.map(bookRow));
+  const epubs = books.filter((book) => book.format !== 'pdf');
+  const pdfs = books.filter((book) => book.format === 'pdf');
+  el.libBooks.replaceChildren(...epubs.map(bookRow));
+  el.libDocuments.replaceChildren(...pdfs.map(bookRow));
+  $('#books-group').hidden = epubs.length === 0;
+  $('#documents-group').hidden = pdfs.length === 0;
   $('#tag-sub').textContent = books.length ? 'Pick up where you left off, or add another book.' : 'Your library is empty. Upload an EPUB to type or a PDF to read.';
   $('#lib').hidden = !books.length;
   el.drop.classList.toggle('compact', books.length > 0);
   $('#drop .big').textContent = books.length ? 'Add another book' : 'Upload EPUB or PDF';
+}
+
+function setLibraryView(view, persist = true) {
+  const selected = view === 'original' ? 'original' : 'shelf';
+  document.body.dataset.libraryView = selected;
+  document.querySelectorAll('[data-library-view]').forEach((tab) => {
+    const active = tab.dataset.libraryView === selected;
+    tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
+  });
+  $('#lib-panel')?.setAttribute('aria-labelledby', `tab-library-${selected}`);
+  if (persist) {
+    try { localStorage.setItem(LIBRARY_VIEW_KEY, selected); } catch { /* selection remains for this page */ }
+  }
 }
 
 async function openBook(id) {
@@ -1651,6 +1673,9 @@ function onKeydown(e) {
 
 /* ================= Initialization ================= */
 function init() {
+  let libraryView = 'shelf';
+  try { libraryView = localStorage.getItem(LIBRARY_VIEW_KEY) || 'shelf'; } catch { /* use the shelf view */ }
+  setLibraryView(libraryView, false);
   S.set = loadSettings();
   S.pref = S.set.view; // the reader's own choice; PDFs and phones override it only temporarily
   if (mobileTypingRestricted()) S.set.view = 'read';
@@ -1832,6 +1857,16 @@ function init() {
   $('#btn-toc').addEventListener('click', openToc);
   $('#btn-focus').addEventListener('click', toggleFocus);
   $('#btn-settings').addEventListener('click', () => { syncSettingsUI(); openPanel(el.settings); });
+  document.querySelectorAll('[data-library-view]').forEach((tab) => tab.addEventListener('click', () => setLibraryView(tab.dataset.libraryView)));
+  $('.library-tabs')?.addEventListener('keydown', (e) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+    e.preventDefault();
+    const tabs = [...document.querySelectorAll('[data-library-view]')];
+    const current = Math.max(0, tabs.indexOf(document.activeElement));
+    const next = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (current + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+    tabs[next]?.focus();
+    setLibraryView(tabs[next]?.dataset.libraryView);
+  });
   el.settings.addEventListener('input', onSettingsInput);
   el.settings.addEventListener('change', onSettingsInput);
   let searchTimer = 0;

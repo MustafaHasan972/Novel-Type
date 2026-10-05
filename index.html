@@ -31,8 +31,22 @@
     <h1 id="tagline">Type your way through every book.</h1>
     <p id="tag-sub" class="sub"></p>
     <div id="lib" hidden>
-      <h2 class="lib-title">Your library</h2>
-      <ol id="lib-list"></ol>
+      <div class="library-tabs" role="tablist" aria-label="Library layout">
+        <button class="library-tab" id="tab-library-shelf" type="button" role="tab" aria-selected="true" aria-controls="lib-panel" data-library-view="shelf">Shelf</button>
+        <button class="library-tab" id="tab-library-original" type="button" role="tab" aria-selected="false" aria-controls="lib-panel" data-library-view="original" tabindex="-1">List</button>
+      </div>
+      <div id="lib-panel" role="tabpanel" aria-labelledby="tab-library-shelf">
+        <div id="lib-list">
+          <section class="library-group" id="books-group" aria-labelledby="books-heading">
+            <h3 id="books-heading">Books</h3>
+            <ol id="lib-books" class="shelf-items"></ol>
+          </section>
+          <section class="library-group" id="documents-group" aria-labelledby="documents-heading" hidden>
+            <h3 id="documents-heading">Documents</h3>
+            <ol id="lib-documents" class="shelf-items"></ol>
+          </section>
+        </div>
+      </div>
     </div>
     <input id="file" class="sr" type="file" accept=".epub,.pdf,application/epub+zip,application/pdf">
     <label id="drop" class="drop" for="file">

@@ -519,6 +519,19 @@ const readPending = () => { try { return JSON.parse(localStorage.getItem(PENDING
 const writePending = (o) => { try { localStorage.setItem(PENDING_KEY, JSON.stringify(o)); } catch { /* ignore */ } };
 const fp = (b) => `${b.title}|${b.chars}`;
 
+async function alreadyInLibrary(book, text) {
+  if (!DB) return false;
+  try {
+    const savedBooks = await idb('books', 'readonly', (t) => t.objectStore('books').getAll());
+    const candidates = savedBooks.filter((saved) => (saved.format || 'epub') === book.format && saved.chars === book.chars);
+    for (const saved of candidates) {
+      const stored = await idb('texts', 'readonly', (t) => t.objectStore('texts').get(saved.id));
+      if (stored?.text === text) return true;
+    }
+  } catch { /* if storage cannot be read, let the existing save path report it */ }
+  return false;
+}
+
 /* ================= Upload handling ================= */
 async function handleFile(file) {
   if (!file || S.state === 'loading') return;
@@ -541,6 +554,10 @@ async function handleFile(file) {
       importedAt: Date.now(), lastOpened: Date.now(), pos: 0, progress: null, chapters: r.chapters, bookmarks: [],
       storyStart: story.start, storyEnd: story.end, stats: { sessions: 0, ms: 0, correct: 0, attempts: 0, errors: 0, words: 0, best: 0 }
     };
+    if (await alreadyInLibrary(book, r.text)) {
+      setState('upload');
+      return showError('This file is already in your library.');
+    }
     const pend = readPending(), key = fp(book);
     if (pend[key]) { Object.assign(book, pend[key]); delete pend[key]; writePending(pend); }
     try { await idb(['books', 'texts'], 'readwrite', (t) => { t.objectStore('books').put(book); t.objectStore('texts').put({ id: book.id, text: r.text, pageStarts: r.pageStarts || [] }); }); }

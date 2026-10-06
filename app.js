@@ -3,6 +3,7 @@
 /* ================= Application state ================= */
 const STORE_KEY = 'novelType:v1';
 const LIBRARY_VIEW_KEY = 'novelType:libraryView';
+const DEMO_SEED_ID = '__noveltype-demo-seed-v1__';
 let libraryViewPreference = 'shelf';
 // Dead keys (e.g. US-International layouts) report key "Dead"; map them back to the character.
 const DEAD = { Quote: ["'", '"'], Backquote: ['`', '~'], Digit6: ['6', '^'] };
@@ -1288,7 +1289,7 @@ async function exportData() {
       const tx = DB.transaction(['books', 'texts'], 'readonly');
       const bookRequest = tx.objectStore('books').getAll();
       const textRequest = tx.objectStore('texts').getAll();
-      tx.oncomplete = () => resolve([bookRequest.result || [], textRequest.result || []]);
+      tx.oncomplete = () => resolve([bookRequest.result || [], (textRequest.result || []).filter((entry) => entry.id !== DEMO_SEED_ID)]);
       tx.onerror = tx.onabort = () => reject(tx.error);
     });
   } catch { toast('Could not read the saved library for export.'); return; }
@@ -1561,6 +1562,71 @@ function bookRow(b) {
   if (b.format !== 'pdf') li.style.setProperty('--book-color', coverColor(Number.isSafeInteger(b.coverSlot) ? b.coverSlot : 0));
   li.append(open, del);
   return li;
+}
+
+function demoLibraryEntries() {
+  const now = Date.now();
+  const bookSections = [
+    { title: 'The Greenhouse Door', body: 'At the far end of the old garden, beneath a roof of tangled ivy, Mara found a door she had never seen before. It was narrow and green, with a brass handle worn smooth by many hands. When she opened it, warm air smelling of rain and cedar drifted out to meet her. Inside, glass walls held a quiet forest: ferns, tiny pools, and lanterns glowing like captured fireflies.' },
+    { title: 'A Map of Small Things', body: 'On a wooden table lay a map drawn in blue ink. It marked no roads or towns, only small wonders: a bird that sang at dusk, a stone warmed by the sun, and a stream that ran beneath the roots. Mara followed the map slowly. By evening she understood its secret. The garden was not asking her to travel far; it was teaching her to notice where she already stood.' }
+  ];
+  const bookText = bookSections.map((section) => `${section.title}\n\n${section.body}`).join('\n\n');
+  let cursor = 0;
+  const bookChapters = bookSections.map((section, index) => {
+    if (index) cursor += 2;
+    const chapter = { title: section.title, start: cursor };
+    cursor += Array.from(`${section.title}\n\n${section.body}`).length;
+    return chapter;
+  });
+
+  const documentPages = [
+    'FIELD NOTES · FERN HOLLOW\n\nSurvey date: 14 May\nWeather: light rain, clearing by noon\n\nThe north trail is firm underfoot. New fern growth covers the slope beside the cedar stand. Several shallow pools have formed along the path, each clear enough to show the leaf litter below.',
+    'OBSERVATIONS\n\nA pair of thrushes was heard near the stream at 8:20. Their calls continued for roughly six minutes. The moss on the old stone wall is brightest on its western face, where the afternoon light reaches through a gap in the canopy.',
+    'CARE NOTES\n\nKeep the small footbridge clear of fallen branches. Leave the marked seedlings undisturbed and avoid trimming the ivy around the lower gate. Next visit: check the stream after a dry week and record any change in water level.'
+  ];
+  const documentText = documentPages.join('\n\n');
+  let pageCursor = 0;
+  const documentChapters = documentPages.map((page, index) => {
+    if (index) pageCursor += 2;
+    const chapter = { title: `Page ${index + 1}`, start: pageCursor, page: index + 1 };
+    pageCursor += Array.from(page).length;
+    return chapter;
+  });
+  const stats = () => ({ sessions: 0, ms: 0, correct: 0, attempts: 0, errors: 0, words: 0, best: 0 });
+  const metadata = (id, title, author, filename, format, text, chapters, extra = {}) => ({
+    id, title, author, filename, format, words: countWords(text), chars: Array.from(text).length,
+    importedAt: now, lastOpened: now, pos: 0, progress: null, chapters, bookmarks: [],
+    storyStart: 0, storyEnd: Array.from(text).length, stats: stats(), ...extra
+  });
+
+  return [
+    {
+      book: metadata('noveltype-demo-book-v1', 'The Greenhouse Door · Sample Book', 'NovelType Sample', 'The Greenhouse Door - Sample.epub', 'epub', bookText, bookChapters),
+      text: { id: 'noveltype-demo-book-v1', text: bookText, pageStarts: [] }
+    },
+    {
+      book: metadata('noveltype-demo-document-v1', 'Field Notes · Sample Document', 'Fern Hollow Survey', 'Field Notes - Sample.pdf', 'pdf', documentText, documentChapters, { pageCount: documentPages.length }),
+      text: { id: 'noveltype-demo-document-v1', text: documentText, pageStarts: documentChapters.map(({ page, start }) => ({ page, start })) }
+    }
+  ];
+}
+
+async function ensureDemoLibrary() {
+  const marker = await idb('texts', 'readonly', (t) => t.objectStore('texts').get(DEMO_SEED_ID));
+  if (marker) return;
+  const [bookIds, textIds] = await Promise.all([
+    idb('books', 'readonly', (t) => t.objectStore('books').getAllKeys()),
+    idb('texts', 'readonly', (t) => t.objectStore('texts').getAllKeys())
+  ]);
+  const savedBooks = new Set(bookIds || []), savedTexts = new Set(textIds || []);
+  const entries = demoLibraryEntries();
+  await idb(['books', 'texts'], 'readwrite', (t) => {
+    for (const entry of entries) {
+      if (!savedBooks.has(entry.book.id)) t.objectStore('books').put(entry.book);
+      if (!savedTexts.has(entry.text.id)) t.objectStore('texts').put(entry.text);
+    }
+    t.objectStore('texts').put({ id: DEMO_SEED_ID, text: 'Demo samples have been seeded.' });
+  });
 }
 
 async function renderLibrary() {
@@ -2080,6 +2146,7 @@ function init() {
   setState('upload');
   openDb().then(async () => {
     try { await navigator.storage?.persist?.(); } catch { /* browser may decline durable storage */ }
+    await ensureDemoLibrary();
     await renderLibrary();
     if (!IS_READER_PAGE) return;
     const id = new URLSearchParams(location.search).get('book');

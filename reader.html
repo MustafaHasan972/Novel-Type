@@ -23,6 +23,7 @@
     <button class="ghost" id="btn-history" type="button">History</button>
     <button class="ghost" id="btn-settings" type="button">Settings</button>
     <button class="ghost" id="btn-theme" type="button">Theme</button>
+    <button class="ghost nature-switch" id="btn-nature-switch" type="button" hidden>Forest Nature</button>
   </nav>
 </header>
 
@@ -183,7 +184,7 @@
 <dialog id="settings" aria-labelledby="set-title">
   <div class="h-head"><h2 id="set-title">Settings</h2><button class="ghost" data-close type="button">Close</button></div>
   <div class="set">
-    <label><span class="opt" data-tip="Dark, light, or Vintage book. Vintage uses warm parchment colors and old-style book lettering. System follows your device.">Theme</span> <select id="set-theme"><option value="dark">Dark</option><option value="light">Light</option><option value="vintage">Vintage book</option><option value="system">System</option></select></label>
+    <label><span class="opt" data-tip="Choose Dark, Light, Vintage book, Nature, or Forest Nature. System follows your device.">Theme</span> <select id="set-theme"><option value="dark">Dark</option><option value="light">Light</option><option value="vintage">Vintage book</option><option value="nature">Nature</option><option value="nature-forest">Forest Nature</option><option value="system">System</option></select></label>
     <label><span class="opt" data-tip="The typeface used for your book.">Font</span> <select id="set-font"><option value="serif">Source Serif</option><option value="merri">Merriweather</option><option value="atk">Atkinson Hyperlegible</option><option value="sans">Inter</option><option value="mono">JetBrains Mono</option></select></label>
     <label><span class="opt" data-tip="How large the book text is.">Font size</span> <input id="set-size" type="range" min="1.1" max="2.6" step="0.05"></label>
     <label><span class="opt" data-tip="Space between lines. Higher feels airier.">Line height</span> <input id="set-lh" type="range" min="1.3" max="2.4" step="0.05"></label>

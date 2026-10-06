@@ -70,3 +70,7 @@ I use this file to keep track of what has changed in NovelType and what still ne
 - 2026-10-06 — Kept shelves with fewer than three books or documents at the standard item width instead of stretching demo-only entries.
 - 2026-10-06 — Refreshed the Light theme with a clean white canvas, subtle blue-violet edge glows, and a floating button to return to the previously active theme.
 - 2026-10-06 — Tuned Light theme book covers with clearer per-book hues, matching spines, and stronger text contrast without changing saved color assignments.
+- 2026-10-06 — Added a Forest Nature theme with layered evergreen silhouettes, compatible book and PDF styling, and a direct switch between it and the original Nature theme.
+- 2026-10-06 — Gave the library file panel rounded corners, translucent surfaces, and a soft backdrop blur.
+- 2026-10-06 — Removed the green panel fill from both Nature library views while preserving the softened background treatment.
+- 2026-10-06 — Darkened the Nature library blur edges with a subtle inset shade and deeper outline.

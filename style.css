@@ -282,6 +282,12 @@ kbd{font:inherit;font-size:.8rem;padding:.12rem .45rem;border-radius:6px;backgro
 #view-upload h1{margin:0;text-align:center;font-size:clamp(2.3rem,5.5vw,4rem);line-height:1.08;font-weight:500;letter-spacing:-.03em;text-wrap:balance}
 #tag-sub{max-width:34rem;margin:0 0 .6rem;text-align:center;font-size:1.15rem;line-height:1.5}
 #lib{width:100%}
+#lib-panel{
+  width:100%;padding:.55rem;border:1px solid rgba(var(--kb),.16);border-radius:22px;
+  background:color-mix(in srgb,var(--panel) 34%,transparent);
+  box-shadow:0 16px 42px rgba(0,0,0,.1),inset 0 1px rgba(255,255,255,.08);
+  -webkit-backdrop-filter:blur(16px) saturate(1.08);backdrop-filter:blur(16px) saturate(1.08)
+}
 .lib-title{margin:0 0 .6rem;font-size:1rem;font-weight:500;color:var(--sub)}
 #lib-list{max-width:none;overflow:hidden;border-radius:18px;border:1px solid rgba(var(--kb),.16);background:color-mix(in srgb,var(--panel) 62%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 #lib-list li,#lib-list li:last-child{padding:1rem 1.3rem;border:0;border-top:1px solid rgba(var(--kb),.10)}
@@ -733,6 +739,65 @@ body[data-library-view="shelf"] #lib-list .shelf-items.short-shelf .pdf-document
 :root[data-theme="nature"] #lib-list .pdf-document .lib-open .prog{background:rgba(56,43,28,.18)}
 :root[data-theme="nature"] #lib-list .pdf-document .lib-open .prog i{background:#82563b}
 :root[data-theme="nature"] #tip,:root[data-theme="nature"] #pdf-tip{background:#26372b;border-color:#71866c}
+
+/* ===== forest Nature: deep evergreen with a layered tree line ===== */
+:root[data-theme="nature-forest"]{
+  color-scheme:dark;--bg:#173b32;--panel:#234c40;--sub:#b4c9bd;--text:#edf3e9;--accent:#93c987;
+  --error:#f08b7c;--error-bg:rgba(240,139,124,.17);--kb:151,190,164;--glow:111,178,128;--glow-a:.08;
+  --ui:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+:root[data-theme="nature-forest"] body{
+  background-color:#173b32;
+  background-image:radial-gradient(ellipse 84% 72% at 52% 24%,rgba(69,126,91,.28),transparent 73%),linear-gradient(180deg,#1c4538 0%,#173b32 68%,#102f28 100%);
+  background-attachment:fixed;
+}
+:root[data-theme="nature-forest"] body::before{
+  position:fixed;z-index:0;inset:10% 0 0;content:"";pointer-events:none;
+  background:linear-gradient(180deg,rgba(23,59,50,.05),transparent 38%,rgba(8,34,27,.26)),url("forest.svg") center bottom/100% 100% no-repeat;
+  opacity:.78;
+}
+:root[data-theme="nature-forest"] #foot{position:relative;z-index:1}
+:root[data-theme="nature-forest"] .brand b{color:#a6d39a}
+:root[data-theme="nature-forest"] nav .ghost:hover{background:rgba(217,236,215,.1)}
+:root[data-theme="nature-forest"] .drop,:root[data-theme="nature-forest"] #range input,:root[data-theme="nature-forest"] #range select,:root[data-theme="nature-forest"] .set select,:root[data-theme="nature-forest"] .set input,:root[data-theme="nature-forest"] #q{
+  border-color:rgba(181,218,182,.3)
+}
+:root[data-theme="nature-forest"] .drop,:root[data-theme="nature-forest"] #lib-list{background:rgba(28,69,55,.58);border-color:rgba(164,207,164,.22);box-shadow:inset 0 1px rgba(235,249,227,.04)}
+:root[data-theme="nature"] #lib-panel,:root[data-theme="nature-forest"] #lib-panel{
+  background:transparent;border-color:rgba(5,24,18,.34);
+  box-shadow:inset 0 0 46px rgba(5,24,18,.3),0 14px 38px rgba(5,24,18,.1)
+}
+:root[data-theme="nature-forest"] #lib-list{background:transparent;border-color:transparent;box-shadow:none}
+:root[data-theme="nature-forest"] .drop:hover,:root[data-theme="nature-forest"] .drop.over,:root[data-theme="nature-forest"] #file:focus-visible+.drop{
+  border-color:var(--accent);box-shadow:0 0 0 1px rgba(147,201,135,.2),0 12px 38px -20px rgba(119,193,131,.35)
+}
+:root[data-theme="nature-forest"] dialog{border:1px solid rgba(166,211,154,.3);background:#20483a;box-shadow:0 18px 60px rgba(4,23,18,.42)}
+:root[data-theme="nature-forest"] .btn:hover{color:#15372e}
+:root[data-theme="nature-forest"] #lib-list .epub-volume .lib-open{
+  color:#f0e6d2;border-color:rgba(190,157,111,.48);border-left:8px ridge #b58b5a;
+  background:linear-gradient(90deg,rgba(28,19,12,.45),transparent 12%,rgba(255,238,198,.12) 15%,transparent 20%),repeating-linear-gradient(176deg,transparent 0 12px,rgba(238,210,165,.075) 13px,transparent 15px),linear-gradient(145deg,#80603c,#493624);
+  box-shadow:3px 8px 15px rgba(0,0,0,.3),inset -1px 0 rgba(255,239,196,.14)
+}
+:root[data-theme="nature-forest"] #lib-list .epub-volume .lib-open::before{position:absolute;inset:8px 7px 8px 14px;border:1px solid rgba(222,190,139,.32);border-radius:2px;content:"";pointer-events:none}
+:root[data-theme="nature-forest"] #lib-list .epub-volume .lib-kind{color:#d6b47e}
+:root[data-theme="nature-forest"] #lib-list .epub-volume .lib-open .prog{background:rgba(230,214,183,.2)}
+:root[data-theme="nature-forest"] #lib-list .epub-volume .lib-open .prog i{background:#a6d39a}
+:root[data-theme="nature-forest"] #lib-list .pdf-document{--document-paper:#d5c29c}
+:root[data-theme="nature-forest"] #lib-list .pdf-document .lib-open{
+  background:repeating-linear-gradient(to bottom,transparent 0 34px,rgba(91,67,39,.1) 35px 36px),linear-gradient(90deg,transparent 0 1.05rem,rgba(139,75,54,.32) 1.05rem 1.12rem,transparent 1.12rem),var(--document-paper);
+  border-color:rgba(83,60,35,.32);box-shadow:2px 8px 14px rgba(0,0,0,.23);color:#382b1c
+}
+:root[data-theme="nature-forest"] #lib-list .pdf-document .lib-open::after{border-top-color:#bca47c}
+:root[data-theme="nature-forest"] #lib-list .pdf-document .lib-kind{color:#79513b}
+:root[data-theme="nature-forest"] #lib-list .pdf-document .lib-open .prog{background:rgba(56,43,28,.18)}
+:root[data-theme="nature-forest"] #lib-list .pdf-document .lib-open .prog i{background:#82563b}
+:root[data-theme="nature-forest"] #tip,:root[data-theme="nature-forest"] #pdf-tip{background:#20483a;border-color:#75a27a}
+.nature-switch[hidden]{display:none}
+.nature-switch{white-space:nowrap}
+@media(max-width:700px){
+  :root[data-theme="nature-forest"] body::before{inset:18% 0 0;opacity:.7}
+  .nature-switch{font-size:.75rem!important;padding:.4rem .45rem!important}
+}
 
 @media (max-width:700px), (hover:none) and (pointer:coarse){
   .library-tabs{display:none}

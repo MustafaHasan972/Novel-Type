@@ -1389,7 +1389,7 @@ function applySettings() {
   if (S.doc?.format === 'pdf') v.view = 'read';
   const oldTheme = r.dataset.theme;
   const theme = v.theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : v.theme;
-  if (theme === 'light' && oldTheme && oldTheme !== 'light' && ['dark', 'vintage', 'nature'].includes(oldTheme)) {
+  if (theme === 'light' && oldTheme && oldTheme !== 'light' && ['dark', 'vintage', 'nature', 'nature-forest'].includes(oldTheme)) {
     try { localStorage.setItem(PREVIOUS_THEME_KEY, oldTheme); } catch { /* use the default theme button target */ }
   }
   r.dataset.theme = theme;
@@ -1401,6 +1401,14 @@ function applySettings() {
   document.body.dataset.view = v.view;
   document.body.dataset.home = 'radiance';
   const pdfReadOnly = S.doc?.format === 'pdf';
+  const natureSwitch = document.getElementById('btn-nature-switch');
+  if (natureSwitch) {
+    const isForestNature = theme === 'nature-forest';
+    natureSwitch.hidden = !['nature', 'nature-forest'].includes(theme);
+    natureSwitch.textContent = isForestNature ? 'Original Nature' : 'Forest Nature';
+    natureSwitch.title = `Switch to ${isForestNature ? 'original Nature' : 'Forest Nature'}`;
+    natureSwitch.setAttribute('aria-label', `Switch to ${isForestNature ? 'original Nature' : 'Forest Nature'} theme`);
+  }
   $('#btn-view').disabled = false;
   $('#btn-view').textContent = pdfReadOnly ? 'Read only' : v.view === 'read' ? 'Type' : 'Read';
   const viewSetting = document.getElementById('set-view');
@@ -1419,7 +1427,7 @@ function onSettingsInput() {
   if (S.doc) { S.lineH = parseFloat(getComputedStyle(el.words).lineHeight) || S.lineH; renderWindow(S.ws); placeCaret(); }
 }
 function toggleTheme() {
-  const order = ['dark', 'light', 'vintage', 'nature'];
+  const order = ['dark', 'light', 'vintage', 'nature', 'nature-forest'];
   S.set.theme = order[(order.indexOf(document.documentElement.dataset.theme) + 1) % order.length];
   applySettings();
   syncSettingsUI();
@@ -1427,8 +1435,13 @@ function toggleTheme() {
 function returnToPreviousTheme() {
   let previous = 'dark';
   try { previous = localStorage.getItem(PREVIOUS_THEME_KEY) || 'dark'; } catch { /* use default */ }
-  if (!['dark', 'vintage', 'nature'].includes(previous)) previous = 'dark';
+  if (!['dark', 'vintage', 'nature', 'nature-forest'].includes(previous)) previous = 'dark';
   S.set.theme = previous;
+  applySettings();
+  syncSettingsUI();
+}
+function toggleNatureTheme() {
+  S.set.theme = document.documentElement.dataset.theme === 'nature-forest' ? 'nature' : 'nature-forest';
   applySettings();
   syncSettingsUI();
 }
@@ -1998,6 +2011,7 @@ function init() {
   window.addEventListener('resize', () => { if (S.doc && ['ready', 'typing', 'paused'].includes(S.state)) { S.lineH = parseFloat(getComputedStyle(el.words).lineHeight) || S.lineH; measureCharGeometry(); moveCaret(); } });
 
   $('#btn-theme').addEventListener('click', toggleTheme);
+  $('#btn-nature-switch')?.addEventListener('click', toggleNatureTheme);
   $('#btn-theme-return')?.addEventListener('click', returnToPreviousTheme);
   $('#btn-history').addEventListener('click', openHistory);
   $('#brand').addEventListener('click', (e) => { e.preventDefault(); exitTest(); });

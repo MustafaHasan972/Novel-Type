@@ -680,6 +680,12 @@ body[data-library-view="shelf"] #lib-list .shelf-items .lib-open{min-width:0}
   body[data-library-view="shelf"] #lib-list .shelf-items .pdf-document{flex-basis:calc((100% - .9rem)/3);width:calc((100% - .9rem)/3);max-width:calc((100% - .9rem)/3)}
 }
 
+/* Keep sparse desktop shelves at the standard book/document dimensions. */
+body[data-library-view="shelf"] #lib-list .shelf-items.short-shelf{justify-content:center}
+body[data-library-view="shelf"] #lib-list .shelf-items.short-shelf>li,
+body[data-library-view="shelf"] #lib-list .shelf-items.short-shelf>li:last-child{flex:0 0 156px;width:156px;max-width:156px}
+body[data-library-view="shelf"] #lib-list .shelf-items.short-shelf .pdf-document{flex-basis:156px;width:156px;max-width:156px}
+
 /* ===== nature: forest greens with restrained wood details ===== */
 :root[data-theme="nature"]{
   color-scheme:dark;

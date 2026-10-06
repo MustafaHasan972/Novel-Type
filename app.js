@@ -1674,6 +1674,7 @@ function syncShelfControls(list) {
   if (!list) return;
   const controls = document.querySelector(`[data-shelf-controls="${list.id}"]`);
   if (!controls) return;
+  list.classList.toggle('short-shelf', list.children.length > 0 && list.children.length < 3);
   const show = document.body.dataset.libraryView !== 'original' && list.children.length > 3;
   controls.hidden = !show;
   const maxScroll = list.scrollWidth - list.clientWidth;

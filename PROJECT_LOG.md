@@ -67,3 +67,4 @@ I use this file to keep track of what has changed in NovelType and what still ne
 - 2026-10-05 — Switched the library to List automatically on phones and restored the saved Shelf/List preference when returning to desktop width.
 - 2026-10-05 — Simplified the phone List view to compact title, author, and progress rows with visible Books/Documents labels.
 - 2026-10-06 — Added a built-in sample book and sample PDF document for new libraries; a persistent IndexedDB marker prevents removed samples from returning.
+- 2026-10-06 — Kept shelves with fewer than three books or documents at the standard item width instead of stretching demo-only entries.

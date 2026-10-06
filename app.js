@@ -4,6 +4,7 @@
 const STORE_KEY = 'novelType:v1';
 const LIBRARY_VIEW_KEY = 'novelType:libraryView';
 const DEMO_SEED_ID = '__noveltype-demo-seed-v1__';
+const PREVIOUS_THEME_KEY = 'novelType:previousTheme';
 let libraryViewPreference = 'shelf';
 // Dead keys (e.g. US-International layouts) report key "Dead"; map them back to the character.
 const DEAD = { Quote: ["'", '"'], Backquote: ['`', '~'], Digit6: ['6', '^'] };
@@ -1386,7 +1387,12 @@ function loadSettings() {
 function applySettings() {
   const r = document.documentElement, v = S.set;
   if (S.doc?.format === 'pdf') v.view = 'read';
-  r.dataset.theme = v.theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : v.theme;
+  const oldTheme = r.dataset.theme;
+  const theme = v.theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : v.theme;
+  if (theme === 'light' && oldTheme && oldTheme !== 'light' && ['dark', 'vintage', 'nature'].includes(oldTheme)) {
+    try { localStorage.setItem(PREVIOUS_THEME_KEY, oldTheme); } catch { /* use the default theme button target */ }
+  }
+  r.dataset.theme = theme;
   r.style.setProperty('--fs', v.size + 'rem');
   r.style.setProperty('--lhr', v.lh);
   r.style.setProperty('--ls', v.ls + 'em');
@@ -1415,6 +1421,14 @@ function onSettingsInput() {
 function toggleTheme() {
   const order = ['dark', 'light', 'vintage', 'nature'];
   S.set.theme = order[(order.indexOf(document.documentElement.dataset.theme) + 1) % order.length];
+  applySettings();
+  syncSettingsUI();
+}
+function returnToPreviousTheme() {
+  let previous = 'dark';
+  try { previous = localStorage.getItem(PREVIOUS_THEME_KEY) || 'dark'; } catch { /* use default */ }
+  if (!['dark', 'vintage', 'nature'].includes(previous)) previous = 'dark';
+  S.set.theme = previous;
   applySettings();
   syncSettingsUI();
 }
@@ -1984,6 +1998,7 @@ function init() {
   window.addEventListener('resize', () => { if (S.doc && ['ready', 'typing', 'paused'].includes(S.state)) { S.lineH = parseFloat(getComputedStyle(el.words).lineHeight) || S.lineH; measureCharGeometry(); moveCaret(); } });
 
   $('#btn-theme').addEventListener('click', toggleTheme);
+  $('#btn-theme-return')?.addEventListener('click', returnToPreviousTheme);
   $('#btn-history').addEventListener('click', openHistory);
   $('#brand').addEventListener('click', (e) => { e.preventDefault(); exitTest(); });
   $('#btn-retry').addEventListener('click', retry);

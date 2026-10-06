@@ -656,9 +656,16 @@ body[data-library-view="original"] #lib-list .shelf-items .lib-item .danger{widt
 :root[data-theme="vintage"] #lib-list .pdf-document .lib-open{background:repeating-linear-gradient(to bottom,transparent 0 34px,rgba(83,59,31,.09) 35px 36px),linear-gradient(90deg,transparent 0 1.05rem,rgba(153,68,47,.36) 1.05rem 1.12rem,transparent 1.12rem),var(--document-paper);border-color:rgba(87,58,28,.28);box-shadow:2px 8px 14px rgba(43,27,10,.24)}
 :root[data-theme="vintage"] #lib-list .pdf-document .lib-kind{color:#8c3428}
 
-:root[data-theme="light"] #lib-list .epub-volume .lib-open{color:#f8f6ef;border-color:rgba(42,49,58,.18);border-left-color:#d5c184;box-shadow:2px 6px 12px rgba(45,51,60,.16),inset -1px 0 rgba(255,255,255,.18)}
-:root[data-theme="light"] #lib-list .epub-volume .lib-open::before{position:absolute;inset:8px 7px 8px 14px;border:1px solid rgba(255,255,255,.2);border-radius:2px;content:"";pointer-events:none}
-:root[data-theme="light"] #lib-list .epub-volume .lib-kind{color:#e7d8b5}
+:root[data-theme="light"] #lib-list .epub-volume .lib-open{
+  color:#fffdf7;border-color:color-mix(in srgb,var(--book-color) 52%,#fff);
+  border-left:8px solid color-mix(in srgb,var(--book-color) 84%,#26334a);
+  background:linear-gradient(90deg,rgba(0,0,0,.24),transparent 13%,rgba(255,255,255,.12) 16%,transparent 21%),linear-gradient(145deg,color-mix(in srgb,var(--book-color) 88%,#fff),color-mix(in srgb,var(--book-color) 76%,#26334a));
+  box-shadow:2px 7px 14px rgba(40,48,67,.2),inset -1px 0 rgba(255,255,255,.2)
+}
+:root[data-theme="light"] #lib-list .epub-volume .lib-open::before{position:absolute;inset:8px 7px 8px 14px;border:1px solid color-mix(in srgb,var(--book-color) 35%,rgba(255,255,255,.65));border-radius:2px;content:"";pointer-events:none}
+:root[data-theme="light"] #lib-list .epub-volume .lib-kind{color:#f1e8d8}
+:root[data-theme="light"] #lib-list .epub-volume .lib-open .prog{background:rgba(255,255,255,.28)}
+:root[data-theme="light"] #lib-list .epub-volume .lib-open .prog i{background:color-mix(in srgb,var(--book-color) 28%,#fff)}
 :root[data-theme="light"] #lib-list .pdf-document{--document-paper:#fbfaf6}
 :root[data-theme="light"] #lib-list .pdf-document .lib-open{background:repeating-linear-gradient(to bottom,transparent 0 34px,rgba(66,89,117,.08) 35px 36px),linear-gradient(90deg,transparent 0 1.05rem,rgba(78,119,166,.3) 1.05rem 1.12rem,transparent 1.12rem),var(--document-paper);border-color:rgba(74,87,102,.18);box-shadow:2px 6px 12px rgba(45,51,60,.14)}
 :root[data-theme="light"] #lib-list .pdf-document .lib-kind{color:#365c85}
@@ -686,27 +693,27 @@ body[data-library-view="shelf"] #lib-list .shelf-items.short-shelf>li,
 body[data-library-view="shelf"] #lib-list .shelf-items.short-shelf>li:last-child{flex:0 0 156px;width:156px;max-width:156px}
 body[data-library-view="shelf"] #lib-list .shelf-items.short-shelf .pdf-document{flex-basis:156px;width:156px;max-width:156px}
 
-/* ===== nature: forest greens with restrained wood details ===== */
+/* ===== nature: sage green surfaces with restrained wood details ===== */
 :root[data-theme="nature"]{
   color-scheme:dark;
-  --bg:#17231b;--panel:#26372b;--sub:#a0b29f;--text:#e5ecdf;--accent:#b9925e;
+  --bg:#587b69;--panel:#466653;--sub:#d0ddcf;--text:#f4f1e8;--accent:#d1a36e;
   --error:#ed8b78;--error-bg:rgba(237,139,120,.17);--kb:185,205,177;
-  --glow:180,205,146;--glow-a:.075;--ui:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --glow:205,226,190;--glow-a:.07;--ui:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
 }
 :root[data-theme="nature"] body{
-  background-color:#17231b;
-  background-image:radial-gradient(ellipse 72% 64% at 50% 8%,rgba(91,126,78,.28),transparent 72%),radial-gradient(ellipse 70% 80% at 50% 100%,rgba(98,70,43,.12),transparent 74%);
+  background-color:#587b69;
+  background-image:radial-gradient(ellipse 90% 80% at 50% 14%,rgba(167,194,161,.12),transparent 72%),radial-gradient(ellipse 85% 90% at 50% 100%,rgba(48,70,53,.19),transparent 78%);
   background-attachment:fixed;
 }
-:root[data-theme="nature"] .brand b{color:#c69b66}
+:root[data-theme="nature"] .brand b{color:#e0b77e}
 :root[data-theme="nature"] .drop,:root[data-theme="nature"] #range input,:root[data-theme="nature"] #range select,:root[data-theme="nature"] .set select,:root[data-theme="nature"] .set input,:root[data-theme="nature"] #q{
-  border-color:rgba(185,146,94,.24);
+  border-color:rgba(232,207,165,.3);
 }
 :root[data-theme="nature"] .drop:hover,:root[data-theme="nature"] .drop.over,:root[data-theme="nature"] #file:focus-visible+.drop{
-  border-color:var(--accent);box-shadow:0 0 0 1px rgba(185,146,94,.2),0 12px 38px -20px rgba(185,146,94,.4)
+  border-color:var(--accent);box-shadow:0 0 0 1px rgba(232,207,165,.2),0 12px 38px -20px rgba(232,207,165,.35)
 }
-:root[data-theme="nature"] dialog{border:1px solid rgba(185,146,94,.32);box-shadow:0 18px 60px rgba(0,0,0,.32)}
-:root[data-theme="nature"] .btn:hover{color:#17231b}
+:root[data-theme="nature"] dialog{border:1px solid rgba(232,207,165,.28);box-shadow:0 18px 60px rgba(25,45,32,.3)}
+:root[data-theme="nature"] .btn:hover{color:#304b3a}
 :root[data-theme="nature"] #lib-list .epub-volume .lib-open{
   color:#f0e6d2;border-color:rgba(190,157,111,.48);border-left:8px ridge #b58b5a;
   background:linear-gradient(90deg,rgba(28,19,12,.45),transparent 12%,rgba(255,238,198,.12) 15%,transparent 20%),repeating-linear-gradient(176deg,transparent 0 12px,rgba(238,210,165,.075) 13px,transparent 15px),linear-gradient(145deg,#80603c,#493624);
@@ -741,3 +748,36 @@ body[data-library-view="shelf"] #lib-list .shelf-items.short-shelf .pdf-document
   body[data-library-view="original"] #lib-list .shelf-items .lib-open .prog{height:2px;margin:.15rem 0 0}
   body[data-library-view="original"] #lib-list .shelf-items .lib-item .danger{width:auto;min-width:3.7rem;height:auto;min-height:0;padding:.3rem .45rem;font-size:.72rem;white-space:nowrap}
 }
+
+/* ===== light theme: clean white space with blue-violet edge glows ===== */
+:root[data-theme="light"]{
+  color-scheme:light;--bg:#fafbff;--panel:#fff;--sub:#7c8499;--text:#292f45;--accent:#5e68d8;
+  --error:#c7475c;--error-bg:rgba(199,71,92,.13);--kb:112,124,185;--glow:255,255,255;--glow-a:.28;
+  --ui:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+:root[data-theme="light"] body{
+  background-color:#fafbff;
+  background-image:radial-gradient(ellipse 31% 45% at 0% 48%,rgba(139,126,247,.15),transparent 74%),radial-gradient(ellipse 31% 45% at 100% 48%,rgba(102,164,247,.14),transparent 74%),linear-gradient(180deg,#fff 0%,#f7f8ff 100%);
+  background-attachment:fixed;
+}
+:root[data-theme="light"] .brand b{color:#6674df}
+:root[data-theme="light"] nav .ghost{color:#737c96}
+:root[data-theme="light"] nav .ghost:hover{background:rgba(255,255,255,.78);box-shadow:0 5px 18px rgba(87,100,164,.1)}
+:root[data-theme="light"] .drop,:root[data-theme="light"] #range,:root[data-theme="light"] dialog{
+  border:1px solid rgba(119,132,192,.16);background:rgba(255,255,255,.84);box-shadow:0 16px 48px rgba(71,86,153,.08);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)
+}
+:root[data-theme="light"] .drop{border-style:solid}
+:root[data-theme="light"] .drop:hover,:root[data-theme="light"] .drop.over,:root[data-theme="light"] #file:focus-visible+.drop{
+  border-color:rgba(94,104,216,.46);background:#fff;box-shadow:0 14px 42px rgba(94,104,216,.12)
+}
+:root[data-theme="light"] #range input,:root[data-theme="light"] #range select,:root[data-theme="light"] .set select,:root[data-theme="light"] .set input,:root[data-theme="light"] #q{
+  border-color:rgba(119,132,192,.18);background:#fff;color:var(--text)
+}
+:root[data-theme="light"] .btn{background:#fff;border:1px solid rgba(119,132,192,.18);box-shadow:0 4px 15px rgba(71,86,153,.07)}
+:root[data-theme="light"] .btn:hover{background:var(--accent);color:#fff}
+:root[data-theme="light"] .library-tab[aria-selected="true"]{background:rgba(94,104,216,.1)}
+:root[data-theme="light"] #tip,:root[data-theme="light"] #pdf-tip{background:rgba(255,255,255,.96);border-color:#d9def2;box-shadow:0 10px 30px rgba(58,72,135,.16)}
+.theme-return{position:fixed;z-index:18;left:max(1.1rem,env(safe-area-inset-left));bottom:max(1.1rem,env(safe-area-inset-bottom));display:none;width:3rem;height:3rem;place-items:center;padding:0;border:1px solid rgba(94,104,216,.2);border-radius:50%;background:rgba(255,255,255,.88);color:#515dbd;font-size:1.4rem;box-shadow:0 8px 24px rgba(64,76,139,.16);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:transform .18s ease,background .18s ease,box-shadow .18s ease}
+:root[data-theme="light"] body[data-state="upload"] .theme-return{display:grid}
+.theme-return:hover{transform:translateY(-3px);background:#fff;box-shadow:0 12px 28px rgba(64,76,139,.22)}
+.theme-return:focus-visible{outline:2px solid var(--accent);outline-offset:3px}

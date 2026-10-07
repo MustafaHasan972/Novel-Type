@@ -74,3 +74,8 @@ I use this file to keep track of what has changed in NovelType and what still ne
 - 2026-10-06 — Gave the library file panel rounded corners, translucent surfaces, and a soft backdrop blur.
 - 2026-10-06 — Removed the green panel fill from both Nature library views while preserving the softened background treatment.
 - 2026-10-06 — Darkened the Nature library blur edges with a subtle inset shade and deeper outline.
+- 2026-10-06 — Removed the library panel surface, blur, border, and edge shading so files sit directly on the page.
+- 2026-10-06 — Disabled selecting page text while keeping search, typing, and settings fields selectable.
+- 2026-10-06 — Replaced the demo book and document filler with a NovelType feature guide, and updated existing demo entries without restoring samples users removed.
+- 2026-10-06 — Added a library option to re-add only the missing demo guide file or files after removal.
+- 2026-10-06 — Moved the missing-demo option to a floating button at the lower-right of the library screen.

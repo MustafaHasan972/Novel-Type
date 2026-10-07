@@ -3,7 +3,9 @@
 /* ================= Application state ================= */
 const STORE_KEY = 'novelType:v1';
 const LIBRARY_VIEW_KEY = 'novelType:libraryView';
-const DEMO_SEED_ID = '__noveltype-demo-seed-v1__';
+const DEMO_SEED_ID = '__noveltype-demo-seed-v2__';
+const PREVIOUS_DEMO_SEED_ID = '__noveltype-demo-seed-v1__';
+const DEMO_ENTRY_IDS = ['noveltype-demo-book-v1', 'noveltype-demo-document-v1'];
 const PREVIOUS_THEME_KEY = 'novelType:previousTheme';
 let libraryViewPreference = 'shelf';
 // Dead keys (e.g. US-International layouts) report key "Dead"; map them back to the character.
@@ -1290,7 +1292,7 @@ async function exportData() {
       const tx = DB.transaction(['books', 'texts'], 'readonly');
       const bookRequest = tx.objectStore('books').getAll();
       const textRequest = tx.objectStore('texts').getAll();
-      tx.oncomplete = () => resolve([bookRequest.result || [], (textRequest.result || []).filter((entry) => entry.id !== DEMO_SEED_ID)]);
+      tx.oncomplete = () => resolve([bookRequest.result || [], (textRequest.result || []).filter((entry) => entry.id !== DEMO_SEED_ID && entry.id !== PREVIOUS_DEMO_SEED_ID)]);
       tx.onerror = tx.onabort = () => reject(tx.error);
     });
   } catch { toast('Could not read the saved library for export.'); return; }
@@ -1594,8 +1596,13 @@ function bookRow(b) {
 function demoLibraryEntries() {
   const now = Date.now();
   const bookSections = [
-    { title: 'The Greenhouse Door', body: 'At the far end of the old garden, beneath a roof of tangled ivy, Mara found a door she had never seen before. It was narrow and green, with a brass handle worn smooth by many hands. When she opened it, warm air smelling of rain and cedar drifted out to meet her. Inside, glass walls held a quiet forest: ferns, tiny pools, and lanterns glowing like captured fireflies.' },
-    { title: 'A Map of Small Things', body: 'On a wooden table lay a map drawn in blue ink. It marked no roads or towns, only small wonders: a bird that sang at dusk, a stone warmed by the sun, and a stream that ran beneath the roots. Mara followed the map slowly. By evening she understood its secret. The garden was not asking her to travel far; it was teaching her to notice where she already stood.' }
+    { title: 'Welcome to NovelType', body: 'NovelType is a personal reading and typing practice space. This sample book is a hands-on guide: choose a chapter from the chapter button, then select Read or Type in Settings. In Type mode, copy the words shown on screen. In Read mode, simply move through the chapter. The sample PDF beside this book is a quick reference guide and is read-only.' },
+    { title: 'Add Books and Documents', body: 'Use Add another book or drag a file onto the upload area to add an EPUB or PDF. EPUB books can be read or used for typing practice. PDFs open in read-only mode. The library keeps books and documents in separate rows; use Shelf or List to change the layout. The shelf shows up to three files at once, with arrows or sideways scrolling for more; phones use the compact list automatically. NovelType checks uploads for books already in your library, including likely matches in another file format. Choose Remove on an item to delete it. The two demo files are examples and can also be removed.' },
+    { title: 'Read and Find Your Place', body: 'Choose a chapter from the chapter menu to load just that chapter. Use the left and right arrow keys to move between chapters, and the up and down arrows to scroll while reading. Page Up and Page Down also move through the text. Contents lists the chapters and your bookmarks; add a bookmark to return to a passage later. Search finds a word or phrase in the current book. Your place is saved in this browser so you can pick up where you left off.' },
+    { title: 'Practice Typing', body: 'Typing practice is available on desktop devices. Type the displayed passage as accurately as you can; the cursor follows your place and the text scrolls along with it. The live display tracks words per minute, accuracy, errors, elapsed time, and completion. At the end, review your score, then choose Continue, Retry, or Library. Press Tab to restart a session, Escape to leave for the results, and Ctrl plus Enter to pause or resume.' },
+    { title: 'Choose Your Practice Style', body: 'Open Settings to choose Normal, Strict, or Zen mistake handling. Normal marks errors as you continue, Strict asks you to correct an error before moving on, and Zen counts errors without marking them in the passage. You can also turn on Blind typing, which hides the upcoming text after a short delay, choose soft, mechanical, or typewriter key sounds, and set a time, word, or chapter goal.' },
+    { title: 'Reading Comfort and Themes', body: 'Settings lets you choose a font, text size, line height, letter spacing, and reading width. Switch among Dark, Light, Vintage book, Nature, and Forest Nature themes; the Nature switch in the header moves directly between its two versions. The round Focus button expands the reading area and enters fullscreen. Focus mode keeps attention on the text; press Escape or use the button to leave it.' },
+    { title: 'History, Shortcuts, and Privacy', body: 'History shows your typing sessions, personal bests, and progress statistics; Clear history removes session records. Use Export backup to save a copy of your library, settings, and history, or Import backup to restore one. Books are stored in this browser on this device and are not uploaded; browser storage is not shared automatically with another computer. Useful shortcuts: Tab to restart; Escape to leave for results; Ctrl plus Enter to pause or resume; Ctrl plus K opens Search; Alt plus Up or Down changes chapter; Ctrl plus Shift plus F toggles Focus; Ctrl plus Shift plus L cycles themes; Ctrl plus Backspace deletes the previous word. While reading, Left and Right change chapters and Up and Down scroll.' }
   ];
   const bookText = bookSections.map((section) => `${section.title}\n\n${section.body}`).join('\n\n');
   let cursor = 0;
@@ -1607,15 +1614,18 @@ function demoLibraryEntries() {
   });
 
   const documentPages = [
-    'FIELD NOTES · FERN HOLLOW\n\nSurvey date: 14 May\nWeather: light rain, clearing by noon\n\nThe north trail is firm underfoot. New fern growth covers the slope beside the cedar stand. Several shallow pools have formed along the path, each clear enough to show the leaf litter below.',
-    'OBSERVATIONS\n\nA pair of thrushes was heard near the stream at 8:20. Their calls continued for roughly six minutes. The moss on the old stone wall is brightest on its western face, where the afternoon light reaches through a gap in the canopy.',
-    'CARE NOTES\n\nKeep the small footbridge clear of fallen branches. Leave the marked seedlings undisturbed and avoid trimming the ivy around the lower gate. Next visit: check the stream after a dry week and record any change in water level.'
+    'NOVELTYPE · QUICK START\n\nNovelType combines a personal book library, an EPUB reader, PDF reading, and desktop typing practice. Upload a file with Add another book or drag it onto the upload area. Open a library item to begin. Use the Settings button to select Read or Type mode. The built-in sample book is a guided walkthrough; this sample PDF is a read-only feature reference.',
+    'LIBRARY & FILE TYPES\n\nEPUB: read chapters or practise typing their text.\nPDF: read-only on desktop and mobile.\n\nBooks and documents appear in separate groups. Shelf and List change the library layout. On a shelf, scroll sideways or use the arrows to reveal more files. Upload checks for likely duplicate books, including copies with another file format. Remove deletes a selected item and its saved place.' ,
+    'READING TOOLS\n\nChoose a chapter from the chapter button to load that chapter only. Left and Right move to the previous or next chapter; Up and Down scroll the chapter. Page Up and Page Down also scroll. Contents opens the chapter list and saved bookmarks. Add a bookmark to save your current place. Search finds text in the open book. Reading position is saved in this browser.',
+    'TYPING PRACTICE · DESKTOP\n\nType the passage shown on screen. The cursor follows your progress and the passage scrolls automatically. Live measures show WPM, accuracy, errors, time, and completion. Normal marks mistakes while you continue; Strict requires a correction; Zen counts mistakes without marking them. Blind typing can hide upcoming words after a chosen delay. At the score screen, choose Continue, Retry, or Library.',
+    'SETTINGS, THEMES & FOCUS\n\nChoose a reading font, size, line height, letter spacing, and text width. Select Dark, Light, Vintage book, Nature, or Forest Nature. The Nature switch in the header toggles directly between the two nature designs. Key sounds can be Off, Soft, Mechanical, or Typewriter. Session goals include time, word count, and chapter completion. The round Focus button expands the text area and enters fullscreen; use Escape or the button to exit.',
+    'HISTORY, BACKUPS & SHORTCUTS\n\nHistory keeps typing session results and personal bests. Export backup saves library data and settings; Import backup restores a backup. Files stay in this browser and are not uploaded or automatically shared with another device. Typing is disabled on phones and other mobile devices; use Read mode there.\n\nCtrl+K: Search · Alt+Up/Down: change chapter · Ctrl+Shift+F: Focus · Ctrl+Shift+L: cycle themes · Ctrl+Backspace: delete the previous word · Ctrl+Enter: pause/resume. In Read mode, Left/Right change chapter and Up/Down scroll.'
   ];
   const documentText = documentPages.join('\n\n');
   let pageCursor = 0;
   const documentChapters = documentPages.map((page, index) => {
     if (index) pageCursor += 2;
-    const chapter = { title: `Page ${index + 1}`, start: pageCursor, page: index + 1 };
+    const chapter = { title: page.split('\n')[0], start: pageCursor, page: index + 1 };
     pageCursor += Array.from(page).length;
     return chapter;
   });
@@ -1628,18 +1638,21 @@ function demoLibraryEntries() {
 
   return [
     {
-      book: metadata('noveltype-demo-book-v1', 'The Greenhouse Door · Sample Book', 'NovelType Sample', 'The Greenhouse Door - Sample.epub', 'epub', bookText, bookChapters),
+      book: metadata('noveltype-demo-book-v1', 'NovelType Feature Guide · Sample Book', 'NovelType Guide', 'NovelType Feature Guide - Sample.epub', 'epub', bookText, bookChapters),
       text: { id: 'noveltype-demo-book-v1', text: bookText, pageStarts: [] }
     },
     {
-      book: metadata('noveltype-demo-document-v1', 'Field Notes · Sample Document', 'Fern Hollow Survey', 'Field Notes - Sample.pdf', 'pdf', documentText, documentChapters, { pageCount: documentPages.length }),
+      book: metadata('noveltype-demo-document-v1', 'NovelType Quick Guide · Sample Document', 'NovelType Guide', 'NovelType Quick Guide - Sample.pdf', 'pdf', documentText, documentChapters, { pageCount: documentPages.length }),
       text: { id: 'noveltype-demo-document-v1', text: documentText, pageStarts: documentChapters.map(({ page, start }) => ({ page, start })) }
     }
   ];
 }
 
 async function ensureDemoLibrary() {
-  const marker = await idb('texts', 'readonly', (t) => t.objectStore('texts').get(DEMO_SEED_ID));
+  const [marker, previousMarker] = await Promise.all([
+    idb('texts', 'readonly', (t) => t.objectStore('texts').get(DEMO_SEED_ID)),
+    idb('texts', 'readonly', (t) => t.objectStore('texts').get(PREVIOUS_DEMO_SEED_ID))
+  ]);
   if (marker) return;
   const [bookIds, textIds] = await Promise.all([
     idb('books', 'readonly', (t) => t.objectStore('books').getAllKeys()),
@@ -1649,11 +1662,50 @@ async function ensureDemoLibrary() {
   const entries = demoLibraryEntries();
   await idb(['books', 'texts'], 'readwrite', (t) => {
     for (const entry of entries) {
-      if (!savedBooks.has(entry.book.id)) t.objectStore('books').put(entry.book);
-      if (!savedTexts.has(entry.text.id)) t.objectStore('texts').put(entry.text);
+      if (previousMarker) {
+        // Update old demo samples in place, but never restore a sample the user removed.
+        if (savedBooks.has(entry.book.id)) {
+          const request = t.objectStore('books').get(entry.book.id);
+          request.onsuccess = () => {
+            const old = request.result;
+            if (!old) return;
+            const updated = { ...entry.book, lastOpened: old.lastOpened || entry.book.lastOpened };
+            if (Number.isSafeInteger(old.coverSlot)) updated.coverSlot = old.coverSlot;
+            t.objectStore('books').put(updated);
+          };
+        }
+        if (savedBooks.has(entry.book.id) && savedTexts.has(entry.text.id)) t.objectStore('texts').put(entry.text);
+      } else {
+        if (!savedBooks.has(entry.book.id)) t.objectStore('books').put(entry.book);
+        if (!savedTexts.has(entry.text.id)) t.objectStore('texts').put(entry.text);
+      }
     }
     t.objectStore('texts').put({ id: DEMO_SEED_ID, text: 'Demo samples have been seeded.' });
   });
+}
+
+async function restoreMissingDemoFiles() {
+  const button = document.getElementById('btn-restore-demo');
+  if (button) button.disabled = true;
+  try {
+    const entries = demoLibraryEntries();
+    const existingIds = new Set(await idb('books', 'readonly', (t) => t.objectStore('books').getAllKeys()));
+    const missing = entries.filter((entry) => !existingIds.has(entry.book.id));
+    if (missing.length) {
+      await idb(['books', 'texts'], 'readwrite', (t) => {
+        for (const entry of missing) {
+          t.objectStore('books').put(entry.book);
+          t.objectStore('texts').put(entry.text);
+        }
+      });
+    }
+    await renderLibrary();
+    toast(missing.length === 1 ? 'Restored the missing demo file.' : missing.length ? 'Restored both demo files.' : 'Both demo files are already in your library.');
+  } catch {
+    toast('Could not restore the demo files. Please try again.');
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 async function renderLibrary() {
@@ -1670,6 +1722,12 @@ async function renderLibrary() {
   el.libDocuments.replaceChildren(...pdfs.map(bookRow));
   $('#books-group').hidden = epubs.length === 0;
   $('#documents-group').hidden = pdfs.length === 0;
+  const missingDemoCount = DEMO_ENTRY_IDS.filter((id) => !books.some((book) => book.id === id)).length;
+  const restoreDemoButton = document.getElementById('btn-restore-demo');
+  if (restoreDemoButton) {
+    restoreDemoButton.hidden = missingDemoCount === 0;
+    restoreDemoButton.textContent = missingDemoCount === 1 ? 'Re-add missing demo file' : 'Re-add both demo files';
+  }
   $('#tag-sub').textContent = books.length ? 'Pick up where you left off, or add another book.' : 'Your library is empty. Upload an EPUB to type or a PDF to read.';
   $('#lib').hidden = !books.length;
   requestAnimationFrame(() => { syncShelfControls(el.libBooks); syncShelfControls(el.libDocuments); });
@@ -2012,6 +2070,7 @@ function init() {
 
   $('#btn-theme').addEventListener('click', toggleTheme);
   $('#btn-nature-switch')?.addEventListener('click', toggleNatureTheme);
+  $('#btn-restore-demo')?.addEventListener('click', restoreMissingDemoFiles);
   $('#btn-theme-return')?.addEventListener('click', returnToPreviousTheme);
   $('#btn-history').addEventListener('click', openHistory);
   $('#brand').addEventListener('click', (e) => { e.preventDefault(); exitTest(); });

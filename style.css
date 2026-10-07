@@ -258,6 +258,7 @@ kbd{font:inherit;font-size:.8rem;padding:.12rem .45rem;border-radius:6px;backgro
 
 /* tooltip bubble */
 #tip,#pdf-tip{position:fixed;left:0;top:0;z-index:1000;max-width:250px;margin-top:6px;padding:.6rem .85rem;border-radius:12px;background:var(--bg);color:var(--text);border:1px solid var(--sub);font-size:.85rem;line-height:1.45;box-shadow:0 6px 18px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .12s ease,margin-top .12s ease}
+#tip[popover]{position:fixed;inset:auto;left:0;top:0;right:auto;bottom:auto;margin:0;transform:none;transition:opacity .12s ease}
 #tip.show,#pdf-tip.show{opacity:1;margin-top:0;transition:opacity .4s ease,margin-top .4s ease}
 #tip b,#pdf-tip b{display:block;margin-bottom:.15rem;font-weight:500;color:var(--accent)}
 
@@ -698,46 +699,6 @@ body[data-library-view="shelf"] #lib-list .shelf-items.short-shelf>li:last-child
 body[data-library-view="shelf"] #lib-list .shelf-items.short-shelf .pdf-document{flex-basis:156px;width:156px;max-width:156px}
 
 /* ===== nature: sage green surfaces with restrained wood details ===== */
-:root[data-theme="nature"]{
-  color-scheme:dark;
-  --bg:#587b69;--panel:#466653;--sub:#d0ddcf;--text:#f4f1e8;--accent:#d1a36e;
-  --error:#ed8b78;--error-bg:rgba(237,139,120,.17);--kb:185,205,177;
-  --glow:205,226,190;--glow-a:.07;--ui:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
-}
-:root[data-theme="nature"] body{
-  background-color:#587b69;
-  background-image:radial-gradient(ellipse 90% 80% at 50% 14%,rgba(167,194,161,.12),transparent 72%),radial-gradient(ellipse 85% 90% at 50% 100%,rgba(48,70,53,.19),transparent 78%);
-  background-attachment:fixed;
-}
-:root[data-theme="nature"] .brand b{color:#e0b77e}
-:root[data-theme="nature"] .drop,:root[data-theme="nature"] #range input,:root[data-theme="nature"] #range select,:root[data-theme="nature"] .set select,:root[data-theme="nature"] .set input,:root[data-theme="nature"] #q{
-  border-color:rgba(232,207,165,.3);
-}
-:root[data-theme="nature"] .drop:hover,:root[data-theme="nature"] .drop.over,:root[data-theme="nature"] #file:focus-visible+.drop{
-  border-color:var(--accent);box-shadow:0 0 0 1px rgba(232,207,165,.2),0 12px 38px -20px rgba(232,207,165,.35)
-}
-:root[data-theme="nature"] dialog{border:1px solid rgba(232,207,165,.28);box-shadow:0 18px 60px rgba(25,45,32,.3)}
-:root[data-theme="nature"] .btn:hover{color:#304b3a}
-:root[data-theme="nature"] #lib-list .epub-volume .lib-open{
-  color:#f0e6d2;border-color:rgba(190,157,111,.48);border-left:8px ridge #b58b5a;
-  background:linear-gradient(90deg,rgba(28,19,12,.45),transparent 12%,rgba(255,238,198,.12) 15%,transparent 20%),repeating-linear-gradient(176deg,transparent 0 12px,rgba(238,210,165,.075) 13px,transparent 15px),linear-gradient(145deg,#80603c,#493624);
-  box-shadow:3px 8px 15px rgba(0,0,0,.3),inset -1px 0 rgba(255,239,196,.14)
-}
-:root[data-theme="nature"] #lib-list .epub-volume .lib-open::before{position:absolute;inset:8px 7px 8px 14px;border:1px solid rgba(222,190,139,.32);border-radius:2px;content:"";pointer-events:none}
-:root[data-theme="nature"] #lib-list .epub-volume .lib-kind{color:#d6b47e}
-:root[data-theme="nature"] #lib-list .epub-volume .lib-open .prog{background:rgba(230,214,183,.2)}
-:root[data-theme="nature"] #lib-list .epub-volume .lib-open .prog i{background:#c4a16c}
-:root[data-theme="nature"] #lib-list .pdf-document{--document-paper:#d5c29c}
-:root[data-theme="nature"] #lib-list .pdf-document .lib-open{
-  background:repeating-linear-gradient(to bottom,transparent 0 34px,rgba(91,67,39,.1) 35px 36px),linear-gradient(90deg,transparent 0 1.05rem,rgba(139,75,54,.32) 1.05rem 1.12rem,transparent 1.12rem),var(--document-paper);
-  border-color:rgba(83,60,35,.32);box-shadow:2px 8px 14px rgba(0,0,0,.23);color:#382b1c
-}
-:root[data-theme="nature"] #lib-list .pdf-document .lib-open::after{border-top-color:#bca47c}
-:root[data-theme="nature"] #lib-list .pdf-document .lib-kind{color:#79513b}
-:root[data-theme="nature"] #lib-list .pdf-document .lib-open .prog{background:rgba(56,43,28,.18)}
-:root[data-theme="nature"] #lib-list .pdf-document .lib-open .prog i{background:#82563b}
-:root[data-theme="nature"] #tip,:root[data-theme="nature"] #pdf-tip{background:#26372b;border-color:#71866c}
-
 /* ===== forest Nature: deep evergreen with a layered tree line ===== */
 :root[data-theme="nature-forest"]{
   color-scheme:dark;--bg:#173b32;--panel:#234c40;--sub:#b4c9bd;--text:#edf3e9;--accent:#93c987;
@@ -784,12 +745,13 @@ body[data-library-view="shelf"] #lib-list .shelf-items.short-shelf .pdf-document
 :root[data-theme="nature-forest"] #lib-list .pdf-document .lib-kind{color:#79513b}
 :root[data-theme="nature-forest"] #lib-list .pdf-document .lib-open .prog{background:rgba(56,43,28,.18)}
 :root[data-theme="nature-forest"] #lib-list .pdf-document .lib-open .prog i{background:#82563b}
-:root[data-theme="nature-forest"] #tip,:root[data-theme="nature-forest"] #pdf-tip{background:#20483a;border-color:#75a27a}
-.nature-switch[hidden]{display:none}
-.nature-switch{white-space:nowrap}
+:root[data-theme="nature-forest"] #tip,:root[data-theme="nature-forest"] #pdf-tip{background:#20483a;color:#edf3e9;border-color:#75a27a}
+:root[data-theme="vintage"] #tip,:root[data-theme="vintage"] #pdf-tip{background:#f0dfb8;color:#342718;border-color:#765631}
+:root[data-theme="vintage"] #tip b,:root[data-theme="vintage"] #pdf-tip b{color:#7c241a}
+:root[data-theme="vintage"] .set select{color-scheme:light}
+:root[data-theme="vintage"] .set select option{background:#f0dfb8;color:#342718}
 @media(max-width:700px){
   :root[data-theme="nature-forest"] body::before{inset:18% 0 0;opacity:.7}
-  .nature-switch{font-size:.75rem!important;padding:.4rem .45rem!important}
 }
 
 @media (max-width:700px), (hover:none) and (pointer:coarse){
@@ -834,7 +796,9 @@ body[data-library-view="shelf"] #lib-list .shelf-items.short-shelf .pdf-document
 :root[data-theme="light"] .btn{background:#fff;border:1px solid rgba(119,132,192,.18);box-shadow:0 4px 15px rgba(71,86,153,.07)}
 :root[data-theme="light"] .btn:hover{background:var(--accent);color:#fff}
 :root[data-theme="light"] .library-tab[aria-selected="true"]{background:rgba(94,104,216,.1)}
-:root[data-theme="light"] #tip,:root[data-theme="light"] #pdf-tip{background:rgba(255,255,255,.96);border-color:#d9def2;box-shadow:0 10px 30px rgba(58,72,135,.16)}
+:root[data-theme="light"] #tip,:root[data-theme="light"] #pdf-tip{background:rgba(255,255,255,.98);color:#292f45;border-color:#d9def2;box-shadow:0 10px 30px rgba(58,72,135,.16)}
+:root[data-theme="light"] .set select{color-scheme:light}
+:root[data-theme="light"] .set select option{background:#fff;color:#292f45}
 .theme-return{position:fixed;z-index:18;left:max(1.1rem,env(safe-area-inset-left));bottom:max(1.1rem,env(safe-area-inset-bottom));display:none;width:3rem;height:3rem;place-items:center;padding:0;border:1px solid rgba(94,104,216,.2);border-radius:50%;background:rgba(255,255,255,.88);color:#515dbd;font-size:1.4rem;box-shadow:0 8px 24px rgba(64,76,139,.16);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:transform .18s ease,background .18s ease,box-shadow .18s ease}
 :root[data-theme="light"] body[data-state="upload"] .theme-return{display:grid}
 .theme-return:hover{transform:translateY(-3px);background:#fff;box-shadow:0 12px 28px rgba(64,76,139,.22)}

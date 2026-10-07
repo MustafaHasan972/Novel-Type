@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Novel Type</title>
-<script>try{document.documentElement.dataset.theme=localStorage.getItem('novelType:theme')||'dark'}catch(e){}</script>
+<script>try{const t=localStorage.getItem('novelType:theme')||'dark';document.documentElement.dataset.theme=t==='nature'?'nature-forest':t}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:wght@400;500&family=Merriweather:wght@400&family=Atkinson+Hyperlegible:wght@400&family=Almendra:wght@400;700&family=Grenze+Gotisch:wght@400;600&display=swap" rel="stylesheet">
@@ -23,7 +23,6 @@
     <button class="ghost" id="btn-history" type="button">History</button>
     <button class="ghost" id="btn-settings" type="button">Settings</button>
     <button class="ghost" id="btn-theme" type="button">Theme</button>
-    <button class="ghost nature-switch" id="btn-nature-switch" type="button" hidden>Forest Nature</button>
   </nav>
 </header>
 
@@ -185,7 +184,7 @@
 <dialog id="settings" aria-labelledby="set-title">
   <div class="h-head"><h2 id="set-title">Settings</h2><button class="ghost" data-close type="button">Close</button></div>
   <div class="set">
-    <label><span class="opt" data-tip="Choose Dark, Light, Vintage book, Nature, or Forest Nature. System follows your device.">Theme</span> <select id="set-theme"><option value="dark">Dark</option><option value="light">Light</option><option value="vintage">Vintage book</option><option value="nature">Nature</option><option value="nature-forest">Forest Nature</option><option value="system">System</option></select></label>
+    <label><span class="opt" data-tip="Choose Dark, Light, Vintage book, or Nature. System follows your device.">Theme</span> <select id="set-theme"><option value="dark">Dark</option><option value="light">Light</option><option value="vintage">Vintage book</option><option value="nature-forest">Nature</option><option value="system">System</option></select></label>
     <label><span class="opt" data-tip="The typeface used for your book.">Font</span> <select id="set-font"><option value="serif">Source Serif</option><option value="merri">Merriweather</option><option value="atk">Atkinson Hyperlegible</option><option value="sans">Inter</option><option value="mono">JetBrains Mono</option></select></label>
     <label><span class="opt" data-tip="How large the book text is.">Font size</span> <input id="set-size" type="range" min="1.1" max="2.6" step="0.05"></label>
     <label><span class="opt" data-tip="Space between lines. Higher feels airier.">Line height</span> <input id="set-lh" type="range" min="1.3" max="2.4" step="0.05"></label>
@@ -207,9 +206,9 @@
     <dt><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>F</kbd></dt><dd>Focus mode</dd>
     <dt><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>L</kbd></dt><dd>Change theme</dd>
   </dl>
-  <div id="tip" role="tooltip"></div>
 </dialog>
 
+<div id="tip" popover="manual" role="tooltip"></div>
 <div id="pdf-tip" role="tooltip"></div>
 <button id="btn-theme-return" class="theme-return" type="button" title="Back to original theme" aria-label="Back to original theme"><span aria-hidden="true">↶</span></button>
 <div id="toast" role="status" aria-live="polite"></div>

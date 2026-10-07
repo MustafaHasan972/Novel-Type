@@ -1382,6 +1382,7 @@ function loadSettings() {
   try {
     const legacy = localStorage.getItem(THEME_KEY);
     const out = { ...SET_DEFAULT, ...(legacy ? { theme: legacy } : {}), ...JSON.parse(localStorage.getItem(SET_KEY) || '{}') };
+    if (out.theme === 'nature') out.theme = 'nature-forest';
     if (out.w > 100) out.w = 100; // older versions stored the width in pixels
     return out;
   } catch { return { ...SET_DEFAULT }; }
@@ -1391,7 +1392,7 @@ function applySettings() {
   if (S.doc?.format === 'pdf') v.view = 'read';
   const oldTheme = r.dataset.theme;
   const theme = v.theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : v.theme;
-  if (theme === 'light' && oldTheme && oldTheme !== 'light' && ['dark', 'vintage', 'nature', 'nature-forest'].includes(oldTheme)) {
+  if (theme === 'light' && oldTheme && oldTheme !== 'light' && ['dark', 'vintage', 'nature-forest'].includes(oldTheme)) {
     try { localStorage.setItem(PREVIOUS_THEME_KEY, oldTheme); } catch { /* use the default theme button target */ }
   }
   r.dataset.theme = theme;
@@ -1403,14 +1404,6 @@ function applySettings() {
   document.body.dataset.view = v.view;
   document.body.dataset.home = 'radiance';
   const pdfReadOnly = S.doc?.format === 'pdf';
-  const natureSwitch = document.getElementById('btn-nature-switch');
-  if (natureSwitch) {
-    const isForestNature = theme === 'nature-forest';
-    natureSwitch.hidden = !['nature', 'nature-forest'].includes(theme);
-    natureSwitch.textContent = isForestNature ? 'Original Nature' : 'Forest Nature';
-    natureSwitch.title = `Switch to ${isForestNature ? 'original Nature' : 'Forest Nature'}`;
-    natureSwitch.setAttribute('aria-label', `Switch to ${isForestNature ? 'original Nature' : 'Forest Nature'} theme`);
-  }
   $('#btn-view').disabled = false;
   $('#btn-view').textContent = pdfReadOnly ? 'Read only' : v.view === 'read' ? 'Type' : 'Read';
   const viewSetting = document.getElementById('set-view');
@@ -1429,7 +1422,7 @@ function onSettingsInput() {
   if (S.doc) { S.lineH = parseFloat(getComputedStyle(el.words).lineHeight) || S.lineH; renderWindow(S.ws); placeCaret(); }
 }
 function toggleTheme() {
-  const order = ['dark', 'light', 'vintage', 'nature', 'nature-forest'];
+  const order = ['dark', 'light', 'vintage', 'nature-forest'];
   S.set.theme = order[(order.indexOf(document.documentElement.dataset.theme) + 1) % order.length];
   applySettings();
   syncSettingsUI();
@@ -1437,13 +1430,9 @@ function toggleTheme() {
 function returnToPreviousTheme() {
   let previous = 'dark';
   try { previous = localStorage.getItem(PREVIOUS_THEME_KEY) || 'dark'; } catch { /* use default */ }
-  if (!['dark', 'vintage', 'nature', 'nature-forest'].includes(previous)) previous = 'dark';
+  if (previous === 'nature') previous = 'nature-forest';
+  if (!['dark', 'vintage', 'nature-forest'].includes(previous)) previous = 'dark';
   S.set.theme = previous;
-  applySettings();
-  syncSettingsUI();
-}
-function toggleNatureTheme() {
-  S.set.theme = document.documentElement.dataset.theme === 'nature-forest' ? 'nature' : 'nature-forest';
   applySettings();
   syncSettingsUI();
 }
@@ -1601,7 +1590,7 @@ function demoLibraryEntries() {
     { title: 'Read and Find Your Place', body: 'Choose a chapter from the chapter menu to load just that chapter. Use the left and right arrow keys to move between chapters, and the up and down arrows to scroll while reading. Page Up and Page Down also move through the text. Contents lists the chapters and your bookmarks; add a bookmark to return to a passage later. Search finds a word or phrase in the current book. Your place is saved in this browser so you can pick up where you left off.' },
     { title: 'Practice Typing', body: 'Typing practice is available on desktop devices. Type the displayed passage as accurately as you can; the cursor follows your place and the text scrolls along with it. The live display tracks words per minute, accuracy, errors, elapsed time, and completion. At the end, review your score, then choose Continue, Retry, or Library. Press Tab to restart a session, Escape to leave for the results, and Ctrl plus Enter to pause or resume.' },
     { title: 'Choose Your Practice Style', body: 'Open Settings to choose Normal, Strict, or Zen mistake handling. Normal marks errors as you continue, Strict asks you to correct an error before moving on, and Zen counts errors without marking them in the passage. You can also turn on Blind typing, which hides the upcoming text after a short delay, choose soft, mechanical, or typewriter key sounds, and set a time, word, or chapter goal.' },
-    { title: 'Reading Comfort and Themes', body: 'Settings lets you choose a font, text size, line height, letter spacing, and reading width. Switch among Dark, Light, Vintage book, Nature, and Forest Nature themes; the Nature switch in the header moves directly between its two versions. The round Focus button expands the reading area and enters fullscreen. Focus mode keeps attention on the text; press Escape or use the button to leave it.' },
+    { title: 'Reading Comfort and Themes', body: 'Settings lets you choose a font, text size, line height, letter spacing, and reading width. Switch among Dark, Light, Vintage book, and Nature themes. Nature uses a deep evergreen palette and layered tree silhouettes. The round Focus button expands the reading area and enters fullscreen. Focus mode keeps attention on the text; press Escape or use the button to leave it.' },
     { title: 'History, Shortcuts, and Privacy', body: 'History shows your typing sessions, personal bests, and progress statistics; Clear history removes session records. Use Export backup to save a copy of your library, settings, and history, or Import backup to restore one. Books are stored in this browser on this device and are not uploaded; browser storage is not shared automatically with another computer. Useful shortcuts: Tab to restart; Escape to leave for results; Ctrl plus Enter to pause or resume; Ctrl plus K opens Search; Alt plus Up or Down changes chapter; Ctrl plus Shift plus F toggles Focus; Ctrl plus Shift plus L cycles themes; Ctrl plus Backspace deletes the previous word. While reading, Left and Right change chapters and Up and Down scroll.' }
   ];
   const bookText = bookSections.map((section) => `${section.title}\n\n${section.body}`).join('\n\n');
@@ -1618,7 +1607,7 @@ function demoLibraryEntries() {
     'LIBRARY & FILE TYPES\n\nEPUB: read chapters or practise typing their text.\nPDF: read-only on desktop and mobile.\n\nBooks and documents appear in separate groups. Shelf and List change the library layout. On a shelf, scroll sideways or use the arrows to reveal more files. Upload checks for likely duplicate books, including copies with another file format. Remove deletes a selected item and its saved place.' ,
     'READING TOOLS\n\nChoose a chapter from the chapter button to load that chapter only. Left and Right move to the previous or next chapter; Up and Down scroll the chapter. Page Up and Page Down also scroll. Contents opens the chapter list and saved bookmarks. Add a bookmark to save your current place. Search finds text in the open book. Reading position is saved in this browser.',
     'TYPING PRACTICE · DESKTOP\n\nType the passage shown on screen. The cursor follows your progress and the passage scrolls automatically. Live measures show WPM, accuracy, errors, time, and completion. Normal marks mistakes while you continue; Strict requires a correction; Zen counts mistakes without marking them. Blind typing can hide upcoming words after a chosen delay. At the score screen, choose Continue, Retry, or Library.',
-    'SETTINGS, THEMES & FOCUS\n\nChoose a reading font, size, line height, letter spacing, and text width. Select Dark, Light, Vintage book, Nature, or Forest Nature. The Nature switch in the header toggles directly between the two nature designs. Key sounds can be Off, Soft, Mechanical, or Typewriter. Session goals include time, word count, and chapter completion. The round Focus button expands the text area and enters fullscreen; use Escape or the button to exit.',
+    'SETTINGS, THEMES & FOCUS\n\nChoose a reading font, size, line height, letter spacing, and text width. Select Dark, Light, Vintage book, or Nature. Nature uses deep evergreen colors and layered tree silhouettes. Key sounds can be Off, Soft, Mechanical, or Typewriter. Session goals include time, word count, and chapter completion. The round Focus button expands the text area and enters fullscreen; use Escape or the button to exit.',
     'HISTORY, BACKUPS & SHORTCUTS\n\nHistory keeps typing session results and personal bests. Export backup saves library data and settings; Import backup restores a backup. Files stay in this browser and are not uploaded or automatically shared with another device. Typing is disabled on phones and other mobile devices; use Read mode there.\n\nCtrl+K: Search · Alt+Up/Down: change chapter · Ctrl+Shift+F: Focus · Ctrl+Shift+L: cycle themes · Ctrl+Backspace: delete the previous word · Ctrl+Enter: pause/resume. In Read mode, Left/Right change chapter and Up/Down scroll.'
   ];
   const documentText = documentPages.join('\n\n');
@@ -2069,7 +2058,6 @@ function init() {
   window.addEventListener('resize', () => { if (S.doc && ['ready', 'typing', 'paused'].includes(S.state)) { S.lineH = parseFloat(getComputedStyle(el.words).lineHeight) || S.lineH; measureCharGeometry(); moveCaret(); } });
 
   $('#btn-theme').addEventListener('click', toggleTheme);
-  $('#btn-nature-switch')?.addEventListener('click', toggleNatureTheme);
   $('#btn-restore-demo')?.addEventListener('click', restoreMissingDemoFiles);
   $('#btn-theme-return')?.addEventListener('click', returnToPreviousTheme);
   $('#btn-history').addEventListener('click', openHistory);
@@ -2193,35 +2181,39 @@ function init() {
 
   // Settings tooltips: a small rounded bubble next to the pointer. It fades in gently and out quickly.
   const tip = $('#tip');
-  let tipEl = null, tx = 0, ty = 0, raf = 0;
+  let tipEl = null, tx = 0, ty = 0, raf = 0, tipHideTimer = 0;
   const tipPlace = () => {
     raf = 0;
     const w = tip.offsetWidth, ht = tip.offsetHeight;
     const x = Math.max(12, Math.min(tx + 14, innerWidth - w - 12));
-    const y = ty - ht - 14 < 12 ? ty + 22 : ty - ht - 14;
-    tip.style.transform = `translate(${x}px, ${y}px)`;
+    const below = ty + ht + 22 <= innerHeight - 12;
+    const y = below ? ty + 18 : Math.max(12, ty - ht - 14);
+    tip.style.left = `${x}px`;
+    tip.style.top = `${y}px`;
   };
   const tipShow = (t, e) => {
+    clearTimeout(tipHideTimer);
     tipEl = t;
     tip.replaceChildren(h('b', '', (t.firstChild ? t.firstChild.textContent : '').trim()), document.createTextNode(t.dataset.tip));
+    if (!tip.matches(':popover-open')) tip.showPopover();
     const r = t.getBoundingClientRect();
     tx = e ? e.clientX : r.left + 40;
-    ty = e ? e.clientY : r.top;
+    ty = e ? e.clientY : r.bottom;
     tipPlace();
     tip.classList.add('show');
   };
-  const tipHide = () => { tipEl = null; tip.classList.remove('show'); };
-  el.settings.addEventListener('pointerover', (e) => {
-    const t = e.target.closest('.opt[data-tip]');
-    if (t && t !== tipEl) tipShow(t, e);
-  });
-  el.settings.addEventListener('pointermove', (e) => {
-    if (!e.target.closest('.opt[data-tip]')) { tipHide(); return; }
-    if (tipEl) { tx = e.clientX; ty = e.clientY; if (!raf) raf = requestAnimationFrame(tipPlace); }
-  });
-  el.settings.addEventListener('pointerout', (e) => {
-    const t = e.target.closest('.opt[data-tip]');
-    if (t && !t.contains(e.relatedTarget)) tipHide();
+  const tipHide = () => {
+    tipEl = null;
+    tip.classList.remove('show');
+    clearTimeout(tipHideTimer);
+    tipHideTimer = setTimeout(() => { if (!tipEl && tip.matches(':popover-open')) tip.hidePopover(); }, 140);
+  };
+  el.settings.querySelectorAll('.opt[data-tip]').forEach((t) => {
+    t.addEventListener('pointerenter', (e) => tipShow(t, e));
+    t.addEventListener('pointermove', (e) => {
+      if (tipEl === t) { tx = e.clientX; ty = e.clientY; if (!raf) raf = requestAnimationFrame(tipPlace); }
+    });
+    t.addEventListener('pointerleave', tipHide);
   });
   el.settings.addEventListener('focusin', (e) => {
     const t = e.target.closest('label')?.querySelector('.opt[data-tip]');

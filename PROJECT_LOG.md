@@ -79,3 +79,6 @@ I use this file to keep track of what has changed in NovelType and what still ne
 - 2026-10-06 — Replaced the demo book and document filler with a NovelType feature guide, and updated existing demo entries without restoring samples users removed.
 - 2026-10-06 — Added a library option to re-add only the missing demo guide file or files after removal.
 - 2026-10-06 — Moved the missing-demo option to a floating button at the lower-right of the library screen.
+- 2026-10-07 — Made the forest design the sole Nature theme, migrated saved Nature selections, and removed the theme-switch control.
+- 2026-10-07 — Fixed settings hover tips to track only the setting names, improved Light dropdown contrast, and darkened Vintage tooltip text for readability.
+- 2026-10-07 — Moved settings tips into the browser top layer and positioned them with viewport coordinates so they stay beside the hovered setting name.

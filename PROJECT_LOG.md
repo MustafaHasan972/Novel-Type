@@ -82,3 +82,7 @@ I use this file to keep track of what has changed in NovelType and what still ne
 - 2026-10-07 — Made the forest design the sole Nature theme, migrated saved Nature selections, and removed the theme-switch control.
 - 2026-10-07 — Fixed settings hover tips to track only the setting names, improved Light dropdown contrast, and darkened Vintage tooltip text for readability.
 - 2026-10-07 — Moved settings tips into the browser top layer and positioned them with viewport coordinates so they stay beside the hovered setting name.
+- 2026-10-07 — Fixed PDF extraction for pages with a decorative initial by joining the isolated first letter to its indented lowercase continuation.
+- 2026-10-07 — Added a saved-PDF migration for page-start initials and joined isolated EPUB initials to their lowercase continuations.
+- 2026-10-07 — Added a saved-EPUB migration to join a page initial separated from the rest of its word, while updating saved reading positions.
+- 2026-10-08 — Added a project README covering NovelType features, controls, storage, file support, and deployment.

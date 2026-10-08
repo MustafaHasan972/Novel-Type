@@ -196,6 +196,15 @@ const normPath = (p) => { const out = []; for (const seg of p.split('/')) { if (
 const dirOf = (p) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/') + 1) : '');
 const safeDecode = (x) => { try { return decodeURIComponent(x); } catch { return x; } };
 
+function mergeSplitInitialParagraphs(paras) {
+  for (let i = 0; i < paras.length - 1;) {
+    const initial = paras[i].trim(), continuation = paras[i + 1].trimStart();
+    if (/^\p{Lu}$/u.test(initial) && /^\p{Ll}/u.test(continuation)) paras.splice(i, 2, initial + continuation);
+    else i++;
+  }
+  return paras;
+}
+
 // Turns one XHTML chapter file into paragraphs (text only: markup never reaches the reader).
 function htmlToParagraphs(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -217,6 +226,7 @@ function htmlToParagraphs(html) {
   };
   walk(doc.body);
   flush();
+  mergeSplitInitialParagraphs(paras);
   const hd = doc.body.querySelector('h1,h2,h3');
   const heading = hd ? normalize(hd.textContent.replace(/\s+/g, ' ')) : '';
   return { paras, heading: heading.length <= 120 ? heading : '' };
@@ -413,7 +423,17 @@ function linesToParagraphs(lines) {
   const width = Math.max(1, right - left);
   const paras = [];
   let cur = lines[0].text;
-  for (let i = 1; i < lines.length; i++) {
+  let lineIndex = 1;
+  // Some PDFs render a decorative initial on a separate baseline at the top of
+  // every page. Join that drop cap to the indented lowercase continuation so
+  // it doesn't become a one-letter line/paragraph in the extracted text.
+  if (lines.length > 1 && /^\p{L}$/u.test(lines[0].text.trim()) &&
+      /^\p{Ll}/u.test(lines[1].text.trim()) &&
+      lines[1].x > lines[0].x + Math.max(1, lines[0].height * 0.35)) {
+    cur = lines[0].text.trim() + lines[1].text.trim();
+    lineIndex = 2;
+  }
+  for (let i = lineIndex; i < lines.length; i++) {
     const prev = lines[i - 1], l = lines[i];
     const ended = /[.!?:;"'\u201D\u2019)\]]$/.test(prev.text);
     const shortPrev = prev.right < right - width * 0.15;
@@ -423,6 +443,65 @@ function linesToParagraphs(lines) {
   }
   paras.push(cur);
   return paras;
+}
+
+// Repair PDF text already saved by older imports. Some PDFs extract a page's
+// initial as a one-letter line followed by a newline and the rest of its word.
+// Remove only that page-boundary newline and shift saved text offsets with it.
+function repairSavedPageInitials(doc) {
+  if (doc.format !== 'pdf' || !Array.isArray(doc.pageStarts) || !doc.pageStarts.length) return false;
+  const chars = Array.from(doc.text || '');
+  const starts = [...doc.pageStarts].sort((a, b) => a.start - b.start);
+  const deletedAt = [];
+  let removed = 0;
+  for (const page of starts) {
+    const originalStart = page.start;
+    const start = originalStart - removed;
+    if (!/^\p{Lu}$/u.test(chars[start] || '')) continue;
+    let end = start + 1;
+    while (end < chars.length && /\s/u.test(chars[end])) end++;
+    if (end === start + 1 || !/^\p{Ll}$/u.test(chars[end] || '')) continue;
+    if (!chars.slice(start + 1, end).includes('\n')) continue;
+    chars.splice(start + 1, end - start - 1);
+    deletedAt.push({ at: originalStart + 1, count: end - start - 1 });
+    removed += end - start - 1;
+  }
+  if (!removed) return false;
+  const remap = (position) => Number.isFinite(position) ? position - deletedAt.filter((entry) => entry.at < position).reduce((n, entry) => n + entry.count, 0) : position;
+  doc.text = chars.join('');
+  doc.chars = chars.length;
+  doc.pageStarts = doc.pageStarts.map((page) => ({ ...page, start: remap(page.start) }));
+  doc.chapters = (doc.chapters || []).map((chapter) => ({ ...chapter, start: remap(chapter.start) }));
+  doc.storyStart = remap(doc.storyStart);
+  doc.storyEnd = remap(doc.storyEnd);
+  doc.pos = remap(doc.pos);
+  if (doc.progress) doc.progress = { ...doc.progress, from: remap(doc.progress.from), to: remap(doc.progress.to), pos: remap(doc.progress.pos) };
+  if (doc.bookmarks) doc.bookmarks = doc.bookmarks.map((bookmark) => ({ ...bookmark, pos: remap(bookmark.pos) }));
+  return true;
+}
+
+// EPUBs saved before the paragraph-level import fix can contain a one-letter
+// initial paragraph followed by the rest of its word on the next line.
+function repairSavedEpubInitials(doc) {
+  if (doc.format !== 'epub') return false;
+  const chars = Array.from(doc.text || ''), deletedAt = [];
+  for (let i = 0; i + 2 < chars.length; i++) {
+    if ((i === 0 || chars[i - 1] === '\n') && /^\p{Lu}$/u.test(chars[i]) && chars[i + 1] === '\n' && /^\p{Ll}$/u.test(chars[i + 2])) {
+      deletedAt.push(i + 1);
+    }
+  }
+  if (!deletedAt.length) return false;
+  for (let i = deletedAt.length - 1; i >= 0; i--) chars.splice(deletedAt[i], 1);
+  const remap = (position) => Number.isFinite(position) ? position - deletedAt.filter((at) => at < position).length : position;
+  doc.text = chars.join('');
+  doc.chars = chars.length;
+  doc.chapters = (doc.chapters || []).map((chapter) => ({ ...chapter, start: remap(chapter.start) }));
+  doc.storyStart = remap(doc.storyStart);
+  doc.storyEnd = remap(doc.storyEnd);
+  doc.pos = remap(doc.pos);
+  if (doc.progress) doc.progress = { ...doc.progress, from: remap(doc.progress.from), to: remap(doc.progress.to), pos: remap(doc.progress.pos) };
+  if (doc.bookmarks) doc.bookmarks = doc.bookmarks.map((bookmark) => ({ ...bookmark, pos: remap(bookmark.pos) }));
+  return true;
 }
 
 async function parsePdf(file, progress) {
@@ -684,7 +763,12 @@ async function handleFile(file) {
 
 function loadText(doc) {
   doc.bookmarks = doc.bookmarks || [];
+  const repairedText = repairSavedPageInitials(doc) || repairSavedEpubInitials(doc);
   S.doc = doc;
+  if (repairedText) {
+    idb('texts', 'readwrite', (t) => t.objectStore('texts').put({ id: doc.id, text: doc.text, pageStarts: doc.pageStarts })).catch(() => {});
+    saveBook();
+  }
   S.set.view = doc.format === 'pdf' || mobileTypingRestricted() ? 'read' : (S.pref || 'type');
   applySettings();
   syncSettingsUI();
